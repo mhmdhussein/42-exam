@@ -30,6 +30,9 @@ fclean: clean
 
 re: fclean build
 
+check-subjects:
+	@bash .system/check_subjects.sh
+
 reset:
 	rm -rf rendu subjects success traces traceback .system/grading
 	rm -f .system/exam_token/current_token.txt
@@ -39,6 +42,7 @@ help:
 	@echo "make build  build only"
 	@echo "make re     rebuild from scratch"
 	@echo "make fclean remove build output"
+	@echo "make check-subjects  run every reference solution through its tester"
 	@echo "make reset  delete session files (rendu, subjects, traces, saved exam)"
 
-.PHONY: all grade build clean fclean re reset help
+.PHONY: all grade build clean fclean re reset check-subjects help

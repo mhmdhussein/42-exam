@@ -1,209 +1,40 @@
-# **************************************************************************** #
-#                                                                              #
-#                                                         :::      ::::::::    #
-#    tester.sh                                          :+:      :+:    :+:    #
-#                                                     +:+ +:+         +:+      #
-#    By: jcluzet <jcluzet@student.42.fr>            +#+  +:+       +#+         #
-#                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2021/06/20 02:26:11 by jcluzet           #+#    #+#              #
-#    Updated: 2022/09/02 00:17:24 by jcluzet          ###   ########.fr        #
-#                                                                              #
-# **************************************************************************** #
-
 FILE='do-op.c'
-ASSIGN='do_op/do_op.c'
+ASSIGN='do_op'
 
-
-index=0
-
-if [ -e traceback ]
-then
-    rm traceback
+bash .system/auto_correc_program.sh $FILE $ASSIGN
+if [ -e .system/grading/traceback ];then
+    mv .system/grading/traceback .
+	exit 1
 fi
 
-cd .system/grading
-gcc -o source $FILE
-./source | cat -e > sourcexam       #TESTING
-rm source
-cd ../../rendu
-{
-gcc -o final $ASSIGN
-}  &>../.system/grading/traceback
-{
-./final | cat -e > finalexam        #TESTING
-mv finalexam ../.system/grading/
-rm final
-}  &>/dev/null
-cd ../.system/grading
-DIFF=$(diff sourcexam finalexam)
-echo "" >> traceback
-if [ "$DIFF" != "" ]
-then
-		index=$(($index + 1))
-		cat sourcexam >> traceback
-		if [ -e finalexam ]
-		then
-		cat finalexam >> traceback
-		else
-		echo "" >> traceback
-		fi
-		echo "-------" >> traceback
+bash .system/auto_correc_program.sh $FILE $ASSIGN "123" "*" 456
+if [ -e .system/grading/traceback ];then
+    mv .system/grading/traceback .
+	exit 1
 fi
-rm finalexam
 
-
-
-gcc -o source $FILE
-./source "123" "*" 456 | cat -e > sourcexam    #TESTING
-rm source
-cd ../../rendu
-{
-gcc -o final $ASSIGN
-./final "123" "*" 456 | cat -e > finalexam     #TESTING
-mv finalexam ../.system/grading/
-rm final
-}  &>/dev/null
-cd ../.system/grading
-DIFF=$(diff sourcexam finalexam)
-if [ "$DIFF" != "" ]
-then
-		index=$(($index + 1))
-		cat sourcexam >> traceback
-		if [ -e finalexam ]
-		then
-		cat finalexam >> traceback
-		else
-		echo "" >> traceback
-		fi
-		echo "-------" >> traceback
+bash .system/auto_correc_program.sh $FILE $ASSIGN "9828" "/" 234
+if [ -e .system/grading/traceback ];then
+    mv .system/grading/traceback .
+	exit 1
 fi
-rm finalexam
 
-
-
-gcc -o source $FILE
-./source "9828" "/" 234  | cat -e > sourcexam    #TESTING
-rm source
-cd ../../rendu
-{
-gcc -o final $ASSIGN
-./final "9828" "/" 234  | cat -e > finalexam     #TESTING
-mv finalexam ../.system/grading/
-rm final
-}  &>/dev/null
-cd ../.system/grading
-DIFF=$(diff sourcexam finalexam)
-if [ "$DIFF" != "" ]
-then
-		index=$(($index + 1))
-		cat sourcexam >> traceback
-		if [ -e finalexam ]
-		then
-		cat finalexam >> traceback
-		else
-		echo "" >> traceback
-		fi
-		echo "-------" >> traceback
+bash .system/auto_correc_program.sh $FILE $ASSIGN "1" "+" "-43"
+if [ -e .system/grading/traceback ];then
+    mv .system/grading/traceback .
+	exit 1
 fi
-rm finalexam
 
-gcc -o source $FILE
-./source "1" "+" "-43" | cat -e > sourcexam    #TESTING
-rm source
-cd ../../rendu
-{
-gcc -o final $ASSIGN
-./final "1" "+" "-43"  | cat -e > finalexam     #TESTING
-mv finalexam ../.system/grading/
-rm final
-}  &>/dev/null
-cd ../.system/grading
-DIFF=$(diff sourcexam finalexam)
-if [ "$DIFF" != "" ]
-then
-		index=$(($index + 1))
-		cat sourcexam >> traceback
-		if [ -e finalexam ]
-		then
-		cat finalexam >> traceback
-		else
-		echo "" >> traceback
-		fi
-		echo "-------" >> traceback
+bash .system/auto_correc_program.sh $FILE $ASSIGN "42" "/" "-42"
+if [ -e .system/grading/traceback ];then
+    mv .system/grading/traceback .
+	exit 1
 fi
-rm finalexam
 
-
-gcc -o source $FILE
-./source "42" "/" "-42" | cat -e > sourcexam    #TESTING
-rm source
-cd ../../rendu
-{
-gcc -o final $ASSIGN
-./final "42" "/" "-42" | cat -e > finalexam     #TESTING
-mv finalexam ../.system/grading/
-rm final
-}  &>/dev/null
-cd ../.system/grading
-DIFF=$(diff sourcexam finalexam)
-if [ "$DIFF" != "" ]
-then
-		index=$(($index + 1))
-		cat sourcexam >> traceback
-		if [ -e finalexam ]
-		then
-		cat finalexam >> traceback
-		else
-		echo "" >> traceback
-		fi
-		echo "-------" >> traceback
+bash .system/auto_correc_program.sh $FILE $ASSIGN "42" "*" "-42"
+if [ -e .system/grading/traceback ];then
+    mv .system/grading/traceback .
+	exit 1
 fi
-rm finalexam
 
-
-
-
-gcc -o source $FILE
-./source "42" "*" "-42" | cat -e > sourcexam    #TESTING
-rm source
-cd ../../rendu
-{
-gcc -o final $ASSIGN
-./final "42" "*" "-42" | cat -e > finalexam     #TESTING
-mv finalexam ../.system/grading/
-rm final
-}  &>/dev/null
-cd ../.system/grading
-DIFF=$(diff sourcexam finalexam)
-if [ "$DIFF" != "" ]
-then
-		index=$(($index + 1))
-		cat sourcexam >> traceback
-		if [ -e finalexam ]
-		then
-		cat finalexam >> traceback
-		else
-		echo "" >> traceback
-		fi
-		echo "-------" >> traceback
-fi
-rm finalexam
-
-
-
-
-
-
-
-
-
-
-
-if [ $index -eq 0 ]
-then
-	touch passed
-fi
-{
-mv traceback ../../traceback
-}	&>/dev/null
-rm sourcexam
+touch .system/grading/passed;

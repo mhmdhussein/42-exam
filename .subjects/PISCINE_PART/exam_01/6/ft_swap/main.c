@@ -1,17 +1,22 @@
+#include <unistd.h>
 #include <stdio.h>
+void    ft_swap(int *a, int *b);
 
-void	ft_swap(int	*a, int *b);
 
-int main (int argc, char **argv)
+int	main(void)
 {
-	(void)argc;
-	int *a;
-	int *b;
+	int	*a;
+	int	*b;
+	int	n1;
+	int	n2;
 
-	*a = atoi(argv[1]);
-	*b = atoi(argv[2]);
-	printf("%d\n%d", a, b);
-	ft_swap(&a, &b);
-	printf("%d\n%d", a, b);
-	return (0);
+	n1 = 9;
+	n2 = 6;
+	a = &n1;
+	b = &n2;
+	printf("Value of n1 is: %u and the value of n2 is: %u.", *a, *b);
+	ft_swap(a, b);
+	printf("\n");
+	printf("Now the value of n1 is: %u and the value of n2 is: %u.", *a, *b);
+	printf("\n");
 }

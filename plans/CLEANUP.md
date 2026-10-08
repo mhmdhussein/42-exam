@@ -68,8 +68,11 @@ Rank 05 (3), Rank 06 (1), Piscine exams 01–04.
 - [ ] Gather the current official structure per rank (exercise lists, levels, question count, time limits).
 - [ ] Restructure `.subjects/` levels; add/remove exercises (subject, reference solution, `main.c`, `tester.sh`).
 - [ ] Update `set_max_lvl` / `set_max_time` in `exam.cpp`.
-- [ ] Resolve `exam_02/need_correction` (verify or delete).
-- [ ] Add `make check-subjects`: run every reference solution through its own `tester.sh` to catch broken exercises.
+- [x] Resolve `exam_02/need_correction` (verify or delete). Deleted: 5 of its 8 exercises were older copies of graded
+      exercises in `exam_02/3`; the other 3 (ft_list_foreach, ft_list_remove_if, sort_int_tab) had no tester.
+- [x] Add `make check-subjects`: run every reference solution through its own `tester.sh` to catch broken exercises.
+      Also requires an empty submission to fail. Open: `exam_06/mini_serv` has no reference solution; 49 exercises
+      (Piscine 03 levels 2–3, Piscine 04) have no tester.
 
 ## Phase 4 — Own improvements (optional)
 

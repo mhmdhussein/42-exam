@@ -18,6 +18,7 @@ make        # build and start
 make build  # build only
 make re     # rebuild from scratch
 make fclean # remove build output
+make check-subjects # check every exercise: the reference must pass its tester, an empty submission must fail
 make reset  # delete session files: rendu/, subjects/, success/, traces/ and the saved exam (settings are kept)
 ```
 
