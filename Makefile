@@ -1,0 +1,44 @@
+NAME     = .system/a.out
+CXX      = c++
+CXXFLAGS = -Wall -Wextra -Werror -std=c++11
+LDLIBS   = -lreadline
+
+SRCS = .system/exercise.cpp .system/main.cpp .system/menu.cpp .system/exam.cpp \
+       .system/utils.cpp .system/grade_request.cpp .system/data_persistence.cpp
+OBJDIR = .system/obj
+OBJS = $(SRCS:.system/%.cpp=$(OBJDIR)/%.o)
+
+all: build
+	@bash .system/launch.sh
+
+grade: all
+
+build: $(NAME)
+
+$(NAME): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) $(LDLIBS) -o $(NAME)
+
+$(OBJDIR)/%.o: .system/%.cpp .system/exam.hpp .system/exercise.hpp
+	@mkdir -p $(OBJDIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	rm -rf $(OBJDIR)
+
+fclean: clean
+	rm -f $(NAME)
+
+re: fclean build
+
+reset:
+	rm -rf rendu subjects success traces traceback .system/grading
+	rm -f .system/exam_token/current_token.txt
+
+help:
+	@echo "make        build and start the exam"
+	@echo "make build  build only"
+	@echo "make re     rebuild from scratch"
+	@echo "make fclean remove build output"
+	@echo "make reset  delete session files (rendu, subjects, traces, saved exam)"
+
+.PHONY: all grade build clean fclean re reset help

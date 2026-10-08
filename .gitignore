@@ -1,0 +1,19 @@
+# Runtime / session files
+/subjects/
+/rendu/
+/success/
+/traceback
+/test
+/.system/grading/
+/.system/exam_token/.settings
+/.system/exam_token/current_token.txt
+/.system/unique_id.txt
+/.system/acceptCGV
+/.system/.devmake.err
+/.system/a.out
+/.system/vip_list
+/.system/readline_ok
+/.system/.env
+/.system/obj/
+*.o
+/traces/
