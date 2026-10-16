@@ -1,0 +1,6 @@
+puts
+malloc
+calloc
+realloc
+free
+write
