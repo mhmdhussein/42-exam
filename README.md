@@ -94,6 +94,8 @@ Each exercise is a folder `.subjects/<STUD_PART|PISCINE_PART>/exam_0X/<level>/<n
   same `traceback` / `passed` contract.
 - `beta` (optional): name of the contributor. Grading then shows a "beta exercise" warning.
 
+The rules every tester must follow are in [docs/TESTER_GUIDE.md](docs/TESTER_GUIDE.md).
+
 ## License
 
 Apache 2.0, see [LICENSE](LICENSE). Derived from [jcluzet/42_EXAM](https://github.com/jcluzet/42_EXAM).
