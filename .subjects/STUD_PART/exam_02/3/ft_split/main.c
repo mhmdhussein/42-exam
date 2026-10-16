@@ -15,6 +15,19 @@
 
 char	**ft_split(char *str);
 
+// Leaves freed blocks full of 'X', so a string missing its '\0' shows up.
+static void dirty_heap(void)
+{
+    for (int size = 1; size <= 128; size++)
+    {
+        char *p = malloc(size);
+        for (int i = 0; i < size; i++)
+            p[i] = 'X';
+        free(p);
+    }
+}
+
+// Prints each word in brackets, up to the NULL that ends the array.
 int main(int argc, char **argv)
 {
 	char	**split;
@@ -22,15 +35,14 @@ int main(int argc, char **argv)
 
 	if (argc == 2)
 	{
+		dirty_heap();
 		split = ft_split(argv[1]);
-			printf("%s ", split[0]);
-		i = 1;
+		i = 0;
 		while (split[i] != 0)
 		{
-			printf("%s ", split[i]);
+			printf("[%s]", split[i]);
 			i++;
 		}
-		printf("%s", split[i]);
 	}
 	printf("\n");
     return (0);

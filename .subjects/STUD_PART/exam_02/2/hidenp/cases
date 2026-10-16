@@ -3,3 +3,8 @@
 "abc" "2altrb53c.sse"
 "abc" "btarc"
 "mais non!" "mais non!"
+"aa" "a"
+"" "abc"
+"abc" ""
+"abc" "aabbcc"
+"abc" "abc" "x"
