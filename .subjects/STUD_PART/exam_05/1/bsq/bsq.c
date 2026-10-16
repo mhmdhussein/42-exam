@@ -62,10 +62,10 @@ void print(char** arr)
 	int i = 0;
 	while(arr[i])
 	{
-		printf("%s\n", arr[i]);
+		fprintf(stdout, "%s\n", arr[i]);
 		i++;
 	}
-	printf("\n");
+	fprintf(stdout, "\n");
 }
 
 int element_control(char** map, char c1, char c2)

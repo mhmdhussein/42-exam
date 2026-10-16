@@ -1,0 +1,14 @@
+malloc
+calloc
+realloc
+free
+fopen
+fclose
+getline
+fscanf
+fputs
+fprintf
+stderr
+stdout
+stdin
+errno
