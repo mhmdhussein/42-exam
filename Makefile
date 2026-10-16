@@ -4,7 +4,8 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++11
 LDLIBS   = -lreadline
 
 SRCS = .system/exercise.cpp .system/main.cpp .system/menu.cpp .system/exam.cpp \
-       .system/utils.cpp .system/grade_request.cpp .system/data_persistence.cpp
+       .system/utils.cpp .system/grade_request.cpp .system/data_persistence.cpp \
+       .system/practice.cpp
 OBJDIR = .system/obj
 OBJS = $(SRCS:.system/%.cpp=$(OBJDIR)/%.o)
 

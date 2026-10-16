@@ -192,6 +192,7 @@ exam::exam(void) : student(false), level_max(0), using_cheatcode(0), exam_grade(
     setting_dcc = false;
     setting_esd = false;
     setting_anim = true;
+    setting_pcd = false;
     load_settings();
     changex = 0;
 }

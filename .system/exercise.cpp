@@ -42,7 +42,13 @@ bool exam::prepare_current_ex(void)
 
     // clean all old files
     clean_all();
+    copy_ex_files();
+    return (false);
+}
 
+// ==> Create work folders and copy subject + grading files of current_ex
+void exam::copy_ex_files(void)
+{
     // create directory for the current exercise
     system("mkdir rendu 2> /dev/null");
     system("mkdir subjects 2> /dev/null");
@@ -55,8 +61,6 @@ bool exam::prepare_current_ex(void)
     // copy all the files in the current get_path() without the attachment folder to the .system/grading/ directory
     cmd_system_call = "cp " + get_path() + "* .system/grading/ >/dev/null 2>&1";
     system(cmd_system_call.c_str());
-
-    return (false);
 }
 
 // ==> Randomize exercise (give 1 into list)

@@ -48,6 +48,7 @@ std::string lastupdate(time_t end_time)
 
 void sigd(void)
 {
+    practice_restore_terminal();
     std::cout << std::endl
               << "You have been disconnected after using Ctrl+D" << std::endl;
     exit(0);
@@ -55,6 +56,7 @@ void sigd(void)
 
 void sigc(int sig)
 {
+    practice_restore_terminal();
     if (sig == SIGINT)
     {
         std::cout << std::endl
@@ -73,6 +75,8 @@ void sigc(int sig)
                   << "Exit exam..." << std::endl;
         exit(0);
     }
+    if (sig == SIGTERM)
+        exit(0);
 }
 
 bool file_exists(std::string path)

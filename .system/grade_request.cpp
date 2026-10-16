@@ -103,6 +103,42 @@ void exam::grademe(void)
     }
 }
 
+// ==> Run tester.sh: 1 on pass, 0 on fail (trace moved to traces/), -1 if there is no tester
+int exam::run_tester(void)
+{
+    if (!file_exists(".system/grading/tester.sh"))
+    {
+        std::cout << "Error: Unable to find grading script for this exercise, it's coming soon. You can use \"force_success\" to pass this ex." << std::endl;
+        return (-1);
+    }
+
+    remove(".system/grading/passed");
+    system("bash .system/grading/tester.sh");
+
+    if (file_exists(".system/grading/passed"))
+        return (1);
+    std::cout << RED << ">>>>>>>>>> FAILURE <<<<<<<<<<" << RESET << std::endl;
+    sleep(1);
+    std::cout << "You have failed the assignment." << std::endl;
+
+    // if there is a traceback file, create a folder traces and copy the file to it with the good name
+    if (file_exists("traceback"))
+    {
+        system("mkdir -p traces");
+        std::string trace_name = std::to_string(level) + "-" + std::to_string(current_ex->get_assignement()) + "_" + current_ex->get_name() + ".trace";
+        std::string cmd_system_call = "mv traceback traces/" + trace_name;
+        system(cmd_system_call.c_str());
+        std::cout << "Trace saved to " << LIME << current_path() << "/traces/" << trace_name << RESET << std::endl
+                  << std::endl;
+    }
+    else
+    {
+        std::cout << "No traceback found." << std::endl
+                  << std::endl;
+    }
+    return (0);
+}
+
 // ==> Function that call the bash grade system
 void exam::grade_request(bool i)
 {
@@ -123,39 +159,15 @@ void exam::grade_request(bool i)
         }
     }
 
-    if (!file_exists(".system/grading/tester.sh"))
-    {
-        std::cout << "Error: Unable to find grading script for this exercise, it's coming soon. You can use \"force_success\" to pass this ex." << std::endl;
+    int result = run_tester();
+    if (result == -1)
         return;
-    }
-
-    system("bash .system/grading/tester.sh");
-
-    if (file_exists(".system/grading/passed"))
+    if (result)
     {
         success_ex(0);
     }
     else
     {
-        std::cout << RED << ">>>>>>>>>> FAILURE <<<<<<<<<<" << RESET << std::endl;
-        sleep(1);
-        std::cout << "You have failed the assignment." << std::endl;
-
-        // if there is a traceback file, create a folder traces and copy the file to it with the good name
-        if (file_exists("traceback"))
-        {
-            system("mkdir -p traces");
-            std::string trace_name = std::to_string(level) + "-" + std::to_string(current_ex->get_assignement()) + "_" + current_ex->get_name() + ".trace";
-            std::string cmd_system_call = "mv traceback traces/" + trace_name;
-            system(cmd_system_call.c_str());
-            std::cout << "Trace saved to " << LIME << current_path() << "/traces/" << trace_name << RESET << std::endl
-                      << std::endl;
-        }
-        else
-        {
-            std::cout << "No traceback found." << std::endl
-                      << std::endl;
-        }
         fail_ex();
         std::cout << "(Press enter to continue...)" << std::endl;
         std::string input;
