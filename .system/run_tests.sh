@@ -45,11 +45,12 @@ for f in *.c *.cpp; do
     esac
 done
 if ls ./*.cpp > /dev/null 2>&1; then
-    CC=(c++ -Wall -Wextra -Werror -std=c++98)
+    CC=(c++ -std=c++98)
 else
-    CC=(gcc -Wall -Wextra -Werror)
+    CC=(gcc)
 fi
 read -ra CC_EXTRA <<< "$CFLAGS_EXTRA"
+WARN=(-Wall -Wextra -Werror)
 
 cleanup() {
     rm -rf "$GRADING/build_ref" "$GRADING/build_stud" "$GRADING/run"
@@ -62,12 +63,23 @@ fail_build() {
 }
 
 # $1 = build dir, $2 = extra flag (BUFFER_SIZE) or "". Builds build dir/prog.
+# The solution's files get the strict flags; the test main is ours, so its
+# warnings are not the student's problem (-w).
 build() {
-    local dir=$1 flag=$2 out
-    out=$(cd "$dir" && "${CC[@]}" "${CC_EXTRA[@]}" $flag -I . -o prog "${SOURCES[@]}" $MAIN 2>&1)
-    local status=$?
-    printf '%s' "$out"
-    return $status
+    local dir=$1 flag=$2
+    (
+        cd "$dir" || exit 1
+        objects=()
+        for f in "${SOURCES[@]}"; do
+            "${CC[@]}" "${WARN[@]}" "${CC_EXTRA[@]}" $flag -I . -c "$f" -o "$f.o" || exit 1
+            objects+=("$f.o")
+        done
+        if [ -n "$MAIN" ]; then
+            "${CC[@]}" -w "${CC_EXTRA[@]}" $flag -I . -c "$MAIN" -o main.o || exit 1
+            objects+=(main.o)
+        fi
+        "${CC[@]}" -o prog "${objects[@]}"
+    ) 2>&1
 }
 
 # ---- prepare build folders -------------------------------------------------
@@ -91,10 +103,17 @@ find "$RENDU" -maxdepth 1 -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.h'
 undefined_symbols() {
     local dir=$1 f NM_FLAG=""
     [ -n "$BUFFER_SIZES" ] && NM_FLAG="-D BUFFER_SIZE=${BUFFER_SIZES%% *}"
-    for f in "${SOURCES[@]}"; do
-        (cd "$dir" && "${CC[@]}" "${CC_EXTRA[@]}" $NM_FLAG -fno-builtin -I . -c "$f" -o "$f.o" 2> /dev/null \
-            && nm -u "$f.o" | awk '{print $NF}'; rm -f "$f.o")
-    done | sort -u
+    (
+        cd "$dir" || exit
+        mkdir -p nm
+        for f in "${SOURCES[@]}"; do
+            "${CC[@]}" "${WARN[@]}" "${CC_EXTRA[@]}" $NM_FLAG -fno-builtin -I . -c "$f" -o "nm/$f.o" 2> /dev/null
+        done
+        # calls between the solution's own files are not external functions
+        comm -23 <(nm -u nm/*.o 2> /dev/null | awk 'NF {print $NF}' | sort -u) \
+            <(nm --defined-only nm/*.o 2> /dev/null | awk 'NF == 3 {print $3}' | sort -u)
+        rm -rf nm
+    )
 }
 
 check_allowed() {
@@ -128,7 +147,8 @@ run_prog() {
 leak_free() {
     local input=$1
     shift
-    timeout -k 2 "$((TIMEOUT * 5))" valgrind -q --leak-check=full --errors-for-leak-kinds=definite         build_stud/prog "$@" < "$input" > /dev/null 2> run/valgrind
+    timeout -k 2 "$((TIMEOUT * 5))" valgrind -q --leak-check=full --errors-for-leak-kinds=definite \
+        build_stud/prog "$@" < "$input" > /dev/null 2> run/valgrind
     ! grep -q 'definitely lost: [1-9]' run/valgrind
 }
 
@@ -143,7 +163,7 @@ quote_arg() {
 
 # $1 = BUFFER_SIZE or "" (shown in the trace)
 run_cases() {
-    local bs=$1 i=0 line input args command reason
+    local bs=$1 i=0 line input arg command stdin_label reason
     local exp_out exp_err exp_status got_out got_err
     for line in "${CASES[@]}"; do
         i=$((i + 1))
