@@ -1,0 +1,12 @@
+r echo hello
+r ls main.c ft_popen.c
+r seq 1 5000
+r printf "a\nb\nc"
+r sh -c "echo out; echo err >&2"
+r nonexistent_command_xyz
+w cat
+w grep o
+w wc -l
+w sed s/l/L/g
+chain
+errors

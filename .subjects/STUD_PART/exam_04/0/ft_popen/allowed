@@ -1,0 +1,6 @@
+pipe
+fork
+dup2
+execvp
+close
+exit
