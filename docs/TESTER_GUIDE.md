@@ -60,7 +60,7 @@ A case passes only if **all** of these are true:
 - **Same stdout.** The student's stdout, passed through `cat -e`, is byte-for-byte the same as the
   reference's. **[exam]**
 - **No crash.** If the process is killed by a signal (exit code above 128), the case fails and the trace
-  gives the signal name: `crash: SIGSEGV`. Get it with `kill -l $((status - 128))`. **[our choice]** for
+  gives the signal name: `crash: SIGSEGV`. Get it with `SIG$(kill -l $((status - 128)))` (`kill -l` prints the name without `SIG`). **[our choice]** for
   the message; a crash always fails in the exam.
 - **No timeout.** Each case runs under `timeout` (default **10 s**; `config` can change it *(planned)*).
   Exit code 124 is a failure: `timeout after 10s`. Don't use `sleep` / `ps -p` polling loops. **[our choice]**
