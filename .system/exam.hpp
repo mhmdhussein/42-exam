@@ -48,7 +48,17 @@ void reset_folder(void);
 void connexion(void);
 void sigc(int sig);
 void sigd(void);
-void sigd(void);
+void practice_restore_terminal(void);
+
+struct practice_entry
+{
+    std::string name;
+    std::string part;
+    int exam;
+    int lvl;
+    bool passed;
+};
+std::vector<practice_entry> practice_filter(const std::vector<practice_entry> &index, const std::string &query, bool &bad_filter);
 
 int stud_or_swim(void);
 int piscine_menu(void);
@@ -77,6 +87,9 @@ public:
     int change_ex(void);
     void exam_prompt(void);
     bool prepare_current_ex(void);
+    void copy_ex_files(void);
+    int run_tester(void);
+    void practice_mode(void);
     bool clean_all(void);
     void restore_data(void);
     bool start_new_ex(void);
@@ -103,11 +116,19 @@ private:
     void save_settings(void);
     int piscine_menu(void);
     int stud_or_swim(void);
+    bool practice_guard(void);
+    int practice_picker(std::vector<practice_entry> &index, std::string &query);
+    int practice_picker_lines(std::vector<practice_entry> &index, std::string &query);
+    void practice_start(practice_entry &entry);
+    int practice_prompt(std::vector<practice_entry> &index, int cur, std::string &query);
+    int practice_random(std::vector<practice_entry> &index, int cur);
+    void practice_status(practice_entry &entry);
 
     bool setting_dse;
     bool setting_dcc;
     bool setting_esd;
     bool setting_anim;
+    bool setting_pcd;
     std::string username;
 
     time_t start_time;

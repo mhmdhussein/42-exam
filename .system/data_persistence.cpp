@@ -138,6 +138,8 @@ void exam::load_settings(void)
             setting_esd = v;
         if (file >> v)
             setting_anim = v;
+        if (file >> v)
+            setting_pcd = v;
         file.close();
     }
 }
@@ -152,6 +154,7 @@ void exam::save_settings(void)
         file << setting_dcc << std::endl;
         file << setting_esd << std::endl;
         file << setting_anim << std::endl;
+        file << setting_pcd << std::endl;
         file.close();
     }
 }

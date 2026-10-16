@@ -222,6 +222,11 @@ int exam::stud_or_swim(void)
                   << std::endl << std::endl;
 
         std::cout << LIME << BOLD << "            3" << RESET << std::endl;
+        std::cout << WHITE << BOLD << "    |" << YELLOW << BOLD << "    Practice    " << WHITE << BOLD << "|" << RESET << BOLD << std::endl
+                  << "     \\ ------------ /" << std::endl
+                  << std::endl;
+
+        std::cout << LIME << BOLD << "            4" << RESET << std::endl;
         std::cout << WHITE << BOLD << "    |" << RESET << BOLD << "  SETTINGS PART " << WHITE << BOLD << "|" << RESET << BOLD << std::endl
                   << "     \\ ------------ /" << std::endl
                   << std::endl
@@ -237,6 +242,8 @@ int exam::stud_or_swim(void)
         if (!std::getline(std::cin, choice))
             sigd();
         if (choice == "3")
+            practice_mode();
+        else if (choice == "4")
         {
             settings_menu();
             std::cin.ignore();
@@ -281,7 +288,14 @@ void exam::settings_menu(void)
             std::cout << LIME << BOLD << " ON" << RESET << std::endl;
         else
             std::cout << RED << BOLD << " OFF" << RESET << std::endl;
-        std::cin >> input;
+
+        std::cout << LIME << "5." << WHITE << BOLD << " Cooldown in Practice mode";
+        if (setting_pcd)
+            std::cout << LIME << BOLD << " ON" << RESET << std::endl;
+        else
+            std::cout << RED << BOLD << " OFF" << RESET << std::endl;
+        if (!(std::cin >> input))
+            sigd();
         if (input == "1")
         {
             setting_dse = !setting_dse;
@@ -293,6 +307,8 @@ void exam::settings_menu(void)
             setting_esd = !setting_esd;
         if (input == "4")
             setting_anim = !setting_anim;
+        if (input == "5")
+            setting_pcd = !setting_pcd;
     }
 
     std::cout << REMOVE_LINE << RESET << WHITE << BOLD << "Save settings..." << std::endl;
