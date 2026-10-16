@@ -14,7 +14,6 @@
 
 void solve(char *str1, char *str2) {
     int i;
-    int j;
     int ascii[256] = {0};
 
     i = 0;
@@ -26,7 +25,6 @@ void solve(char *str1, char *str2) {
     }
 
     i = 0;
-    j = 0;
     while (str1[i])
     {
         if (ascii[(int)str1[i]] == 1)
