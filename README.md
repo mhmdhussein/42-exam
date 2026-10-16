@@ -64,6 +64,9 @@ Each exercise is a folder `.subjects/<STUD_PART|PISCINE_PART>/exam_0X/<level>/<n
 - `tester.sh`: calls `.system/auto_correc_program.sh` (programs) or `.system/auto_correc_main.sh`
   (functions) once per test case. After each call, if `.system/grading/traceback` exists, it moves the
   file to the root and exits 1. At the end it runs `touch .system/grading/passed`.
+  Exercises that need stdin, several files, C++ or a custom test `main` (STUD exams 03–05) have
+  self-contained testers that build and compare reference and student output themselves, with the
+  same `traceback` / `passed` contract.
 - `beta` (optional): name of the contributor. Grading then shows a "beta exercise" warning.
 
 ## License
