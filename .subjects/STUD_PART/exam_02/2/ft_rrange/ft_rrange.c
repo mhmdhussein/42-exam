@@ -2,7 +2,6 @@
 
 #include <stdlib.h>
 
-int		absolute_value(int n);
 
 int		*ft_rrange(int start, int end)
 {
@@ -11,7 +10,7 @@ int		*ft_rrange(int start, int end)
 	int step;
 	int i;
 
-	number_of_ints = 1 + absolute_value(end - start);
+	number_of_ints = 1 + (end > start ? end - start : start - end);
 	array = malloc(sizeof(int) * number_of_ints);
 
 	if (start > end)
