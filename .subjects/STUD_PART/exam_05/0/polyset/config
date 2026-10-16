@@ -1,0 +1,4 @@
+files=searchable_array_bag.hpp searchable_array_bag.cpp searchable_tree_bag.hpp searchable_tree_bag.cpp set.hpp set.cpp
+stderr=on
+# tree_bag.cpp prints debug lines whose count depends on how set calls it
+ignore=^(create node|duplicate value|destroying value): 
