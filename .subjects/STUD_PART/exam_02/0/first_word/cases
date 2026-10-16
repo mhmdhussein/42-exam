@@ -6,3 +6,6 @@
 "a" "b"
 "  lorem,ipsum  "
 (no args)
+$'\t\thello world'
+$'hello\tworld'
+""

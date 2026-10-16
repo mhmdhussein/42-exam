@@ -18,7 +18,7 @@ make        # build and start
 make build  # build only
 make re     # rebuild from scratch
 make fclean # remove build output
-make check-subjects # check every exercise: the reference must pass its tester, an empty submission must fail
+make check-subjects # check every exercise: the reference must pass its tester, an empty submission and every wrong/ solution must fail
 make reset  # delete session files: rendu/, subjects/, success/, traces/ and the saved exam (settings are kept)
 ```
 
@@ -92,6 +92,8 @@ Each exercise is a folder `.subjects/<STUD_PART|PISCINE_PART>/exam_0X/<level>/<n
 - `allowed` (optional): the subject's allowed functions; any other function the student calls fails.
 - `config` (optional): per-exercise settings (timeout, `BUFFER_SIZE` values, exit code / stderr / leak checks).
 - `inputs/` (optional): files fed on stdin by `stdin:` cases.
+- `wrong/`: known-wrong solutions, each named after its bug. `make check-subjects` reports `LEAKY` if the
+  tester lets one pass.
 - `tester.sh`: only for exercises the runner can't handle (servers, several processes...). It writes the
   same trace and the `.system/grading/passed` marker.
 - `beta` (optional): name of the contributor. Grading then shows a "beta exercise" warning.

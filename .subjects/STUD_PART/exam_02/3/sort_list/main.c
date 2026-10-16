@@ -10,21 +10,8 @@ int ascending(int a, int b)
 	return (a <= b);
 }
 
-int	main(void)
+void	print_list(t_list *cur)
 {
-	t_list *c = malloc(sizeof(t_list));
-	c->next = 0;
-	c->data = 45;
-
-	t_list *b = malloc(sizeof(t_list));
-	b->next = c;
-	b->data = 73;
-
-	t_list *a = malloc(sizeof(t_list));
-	a->next = b;
-	a->data = 108;
-
-	t_list *cur = a;
 	while (cur)
 	{
 		printf("%d", cur->data);
@@ -33,16 +20,23 @@ int	main(void)
 		cur = cur->next;
 	}
 	printf("\n");
+}
 
-	cur = sort_list(a, ascending);
+// No arguments: the list 108, 73, 45. Otherwise one node per argument.
+int	main(int argc, char **argv)
+{
+	int		defaults[] = {108, 73, 45};
+	int		count = (argc == 1) ? 3 : argc - 1;
+	t_list	*head = 0;
 
-	// cur = a;
-	while (cur)
+	while (count-- > 0)
 	{
-		printf("%d", cur->data);
-		if (cur->next != 0)
-			printf(", ");
-		cur = cur->next;
+		t_list *node = malloc(sizeof(t_list));
+		node->data = (argc == 1) ? defaults[count] : atoi(argv[count + 1]);
+		node->next = head;
+		head = node;
 	}
-	printf("\n");
+	print_list(head);
+	print_list(sort_list(head, ascending));
+	return (0);
 }

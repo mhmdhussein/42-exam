@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct s_list
 {
@@ -7,25 +8,26 @@ typedef struct s_list
     void          *data;
 } t_list;
 
-
 int	ft_list_size(t_list *begin_list);
 
-
-int	main(void)
+// No arguments: a list of 3 nodes. "empty": an empty list (NULL).
+// Otherwise one node per argument.
+int	main(int argc, char **argv)
 {
-	int n = 0;
+	t_list	*head = 0;
+	int		count = argc - 1;
 
-	t_list *c = malloc(sizeof(*c));
-	c->next = 0;
-	c->data = &n;
-
-	t_list *b = malloc(sizeof(*b));
-	b->next = c;
-	b->data = &n;
-
-	t_list *a = malloc(sizeof(*a));
-	a->next = b;
-	a->data = &n;
-
-	printf("%d\n", ft_list_size(a));
+	if (argc == 1)
+		count = 3;
+	else if (argc == 2 && strcmp(argv[1], "empty") == 0)
+		count = 0;
+	while (count-- > 0)
+	{
+		t_list *node = malloc(sizeof(*node));
+		node->next = head;
+		node->data = argv[0];
+		head = node;
+	}
+	printf("%d\n", ft_list_size(head));
+	return (0);
 }
