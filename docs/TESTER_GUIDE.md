@@ -37,8 +37,10 @@ Each subject has an `Allowed functions:` line. A solution that calls any other e
 How to check it:
 
 1. Copy the list from the subject into the exercise's `allowed` file, one name per line.
-   An empty line or `None` in the subject means no functions are allowed. Function exercises may also
-   use whatever the given `main.c` uses; that is checked on the student's file only, so it doesn't matter.
+   An empty line or `None` in the subject means no functions are allowed; no `allowed` file means the
+   check is skipped (C++ subjects). Only the student's files are checked, so the test `main.c` may use
+   anything. When the subject hands the student a starter file that calls other functions, add them with
+   a `#` comment line saying why (see `exam_04/1/argo/allowed`).
 2. Compile the student's files to object files only: `gcc -Wall -Wextra -Werror -c`.
 3. List the undefined symbols: `nm -u <file>.o`.
 4. Every symbol must be in `allowed` or in the exception list below. If not, the case fails and the
@@ -50,6 +52,10 @@ Exceptions, always allowed because the compiler adds them, not the student: **[o
 |--------|----------------|
 | `__stack_chk_fail`, `__stack_chk_guard` | stack protector |
 | `_GLOBAL_OFFSET_TABLE_` | position-independent code |
+| `__ctype_b_loc`, `__ctype_tolower_loc`, `__ctype_toupper_loc` | `<ctype.h>` macros; allowed when an `is*` / `to*` function is |
+| `__errno_location` | how `errno` is read; allowed when `errno` is |
+| `__isoc99_<name>` | glibc's name for the scanf family; checked as `<name>` |
+| calls between the solution's own files, or to given files | not external functions |
 | `memcpy`, `memset`, `memmove` | the compiler can emit these for struct copies and array initialisation. Allowed only if the reference solution's `nm -u` also shows them, or if the subject allows them. |
 | C++: `__cxa_*`, `__gxx_personality_v0`, `_Unwind_Resume`, `operator new` / `delete` (`_Znwm`, `_ZdlPv`, ...), `std::` symbols (`_ZNSt*`, `_ZSt*`) | C++ runtime and standard library. C++ subjects usually limit headers or features, not functions, so C++ exercises check only what the subject explicitly forbids. |
 
@@ -172,15 +178,18 @@ Each tester has at least **8 cases**. **[our choice]** Pick the ones that apply 
 └── beta                        optional: contributor name, shows a "beta exercise" warning
 ```
 
-**How the runner builds an exercise**: the reference sources are every top-level `.c` / `.cpp` file except
-`main.c` / `main.cpp`. The student must hand in files with the same names in `rendu/<name>/`. A `main.c`
-(or `main.cpp`) is the test main of a function exercise and is linked with both. Any `.cpp` file switches
-to `c++ -std=c++98`. Given headers are copied next to the student's files; the student's own headers win.
-The programs run from `.system/grading/`, so a case can name a file there (`map.txt`).
+**How the runner builds an exercise**: by default the reference sources are every top-level `.c` / `.cpp`
+file except `main.c` / `main.cpp`, and the student must hand in files with the same names in
+`rendu/<name>/`. A `main.c` (or `main.cpp`) is the test main of a function exercise and is linked with
+both. `files` in `config` changes this (below). The solution's files get `-Wall -Wextra -Werror`; the test
+main and other given sources are ours and are built with `-w`. Any `.cpp` file switches to
+`c++ -std=c++98`. Given headers are copied next to the student's files; the student's own headers win.
+The programs run from `.system/grading/`, so a case can name a file there (`inputs/map1`).
 
 **`cases`**: one case per line, in the arguments' shell-quoted form, exactly as on a command line. Lines
 starting with `#` and empty lines are ignored, so a case with no arguments is written `(no args)`. A
-`stdin: <file>` prefix feeds `inputs/<file>` on stdin; any arguments follow the file name. Without it,
+`stdin: <file>` prefix feeds `inputs/<file>` on stdin; any arguments follow the file name. A file ending
+in `.sh` is run and its output piped in instead (for input that arrives in chunks). Without a prefix,
 stdin is `/dev/null`.
 
 ```
@@ -203,6 +212,10 @@ stdin: two_lines.txt "pattern"
 | `exit_code` | `off` | `on`: the exit code must match the reference |
 | `stderr` | `off` | `on`: stderr (through `cat -e`) must match the reference |
 | `leaks` | `off` | `on`: fail if valgrind reports definitely lost memory (skipped if valgrind is missing) |
+| `files` | (none) | the files the student hands in. A list (`files=vect2.hpp vect2.cpp`): exactly these, and other sources here are given. Patterns (`files=*.c *.h`): any matching files, and there is no test main |
+| `ldflags` | (none) | extra link flags (`-lm`) |
+| `sort_output` | `off` | `on`: sort the output lines before comparing (any order is allowed) |
+| `ignore` | (none) | extended regex; matching output lines are dropped before comparing |
 
 ```
 timeout=10
@@ -210,8 +223,9 @@ buffer_sizes=1 42 10000000
 exit_code=on
 ```
 
-**Custom `tester.sh`**: allowed only when `cases` can't describe the exercise (`microshell`, `mini_serv`,
-the C++ modules, anything needing several processes or a network). A custom tester must still follow
+**Custom `tester.sh`**: allowed only when `cases` can't describe the exercise (servers, several
+processes, per-case output filters). Today: `STUD_PART/exam_04/0/picoshell` and
+`STUD_PART/exam_06/0/mini_serv`. A custom tester must still follow
 sections 1–4: same flags, same pass/fail rules, the same trace format, and `touch
 .system/grading/passed` when every case passes. Source `.system/trace.sh` and write the trace with its
 `trace_case` / `trace_build` functions, as the runner does.

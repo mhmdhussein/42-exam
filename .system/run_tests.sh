@@ -158,7 +158,7 @@ undefined_symbols() {
             "${CC[@]}" -w "${CC_EXTRA[@]}" $nm_flag -I . -c "$f" -o "nm_given/$f.o" 2> /dev/null
         done
         # calls to the solution's own or the given files are not external functions
-        comm -23 <(nm -u nm/*.o 2> /dev/null | awk 'NF {print $NF}' | sort -u) \
+        comm -23 <(nm -u nm/*.o 2> /dev/null | awk 'NF && !/:$/ {print $NF}' | sort -u) \
             <(nm --defined-only nm/*.o nm_given/*.o 2> /dev/null | awk 'NF == 3 {print $3}' | sort -u)
         rm -rf nm nm_given
     )
@@ -170,12 +170,15 @@ check_allowed() {
     ref_symbols=$(undefined_symbols build_ref "${REF_SOURCES[@]}")
     while read -r sym; do
         [ -z "$sym" ] && continue
+        # glibc renames the scanf family (__isoc99_fscanf, __isoc23_sscanf...)
+        [[ $sym =~ ^__isoc[0-9]+_(.*)$ ]] && sym=${BASH_REMATCH[1]}
         case "$sym" in
             __stack_chk_fail | __stack_chk_guard | _GLOBAL_OFFSET_TABLE_) continue ;;
             __cxa_* | __gxx_personality_v0 | _Unwind_Resume | _Zn* | _Zd* | _ZNSt* | _ZSt* | _ZNKSt*) continue ;;
             # is*/to* from <ctype.h> are macros over these tables
             __ctype_b_loc | __ctype_tolower_loc | __ctype_toupper_loc)
                 grep -qE '^(is|to)[a-z]+$' allowed && continue ;;
+            __errno_location) grep -qx errno allowed && continue ;;
             memcpy | memset | memmove) grep -qx "$sym" <<< "$ref_symbols" && continue ;;
         esac
         grep -qx "$sym" allowed || fail_build "forbidden function: $sym"
