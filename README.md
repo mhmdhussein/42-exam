@@ -86,12 +86,14 @@ Each exercise is a folder `.subjects/<STUD_PART|PISCINE_PART>/exam_0X/<level>/<n
 - `attachment/subject.en.txt`, plus any other files given to the student
 - `<name>.c`: the reference solution, assumed correct
 - `main.c`: only for function exercises
-- `tester.sh`: calls `.system/auto_correc_program.sh` (programs) or `.system/auto_correc_main.sh`
-  (functions) once per test case. After each call, if `.system/grading/traceback` exists, it moves the
-  file to the root and exits 1. At the end it runs `touch .system/grading/passed`.
-  Exercises that need stdin, several files, C++ or a custom test `main` (STUD exams 03–05) have
-  self-contained testers that build and compare reference and student output themselves, with the
-  same `traceback` / `passed` contract.
+- `cases`: the test cases, one per line in shell-quoted form, graded by the shared runner
+  `.system/run_tests.sh`. It compiles the reference and `rendu/<name>/` with `-Wall -Wextra -Werror`,
+  runs both on every case and compares the output.
+- `allowed` (optional): the subject's allowed functions; any other function the student calls fails.
+- `config` (optional): per-exercise settings (timeout, `BUFFER_SIZE` values, exit code / stderr / leak checks).
+- `inputs/` (optional): files fed on stdin by `stdin:` cases.
+- `tester.sh`: only for exercises the runner can't handle (servers, several processes...). It writes the
+  same trace and the `.system/grading/passed` marker.
 - `beta` (optional): name of the contributor. Grading then shows a "beta exercise" warning.
 
 The rules every tester must follow are in [docs/TESTER_GUIDE.md](docs/TESTER_GUIDE.md).

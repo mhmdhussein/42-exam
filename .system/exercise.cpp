@@ -61,6 +61,10 @@ void exam::copy_ex_files(void)
     // copy all the files in the current get_path() without the attachment folder to the .system/grading/ directory
     cmd_system_call = "cp " + get_path() + "* .system/grading/ >/dev/null 2>&1";
     system(cmd_system_call.c_str());
+
+    // stdin files for the cases of the shared runner
+    cmd_system_call = "cp -r " + get_path() + "inputs .system/grading/ >/dev/null 2>&1";
+    system(cmd_system_call.c_str());
 }
 
 // ==> Randomize exercise (give 1 into list)
