@@ -1,0 +1,2 @@
+files=*.c *.h
+sort_output=on
