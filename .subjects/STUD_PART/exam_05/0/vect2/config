@@ -1,0 +1,2 @@
+files=vect2.hpp vect2.cpp
+stderr=on
