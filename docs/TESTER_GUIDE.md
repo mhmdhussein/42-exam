@@ -10,9 +10,9 @@ the same inputs and compare the results. Each rule is tagged:
 - **[exam]**: matches known real-exam behaviour (from the subjects or the exam's documented rules).
 - **[our choice]**: our decision. The real grader may be more or less strict.
 
-Some parts depend on work that is still planned in the **Reliable testers** milestone: the shared
-runner and the `cases` / `allowed` / `config` files (#5), and the `wrong/` solutions (#6). These parts are
-marked *(planned)*. Until they land, hand-written testers must follow the same rules.
+Most exercises are graded by the shared runner `.system/run_tests.sh`, which applies these rules to the
+exercise's `cases` / `allowed` / `config` files (section 6). The `wrong/` solutions (#6) are still
+planned and marked *(planned)*.
 
 ## 1. Compiling
 
@@ -27,7 +27,7 @@ marked *(planned)*. Until they land, hand-written testers must follow the same r
   (`build_ref` / `build_stud`) so their headers don't mix.
 - A compile error, including a warning turned into an error, is a **failure**. The trace shows the
   full compiler output. **[exam]**
-- Extra flags for an exercise (for example `-D BUFFER_SIZE=42`) go in `config` *(planned)*. **[our choice]**
+- Extra flags for an exercise (for example `-D BUFFER_SIZE=42`) go in `config`. **[our choice]**
 
 ## 2. Allowed functions
 
@@ -36,9 +36,11 @@ Each subject has an `Allowed functions:` line. A solution that calls any other e
 
 How to check it:
 
-1. Copy the list from the subject into the exercise's `allowed` file, one name per line *(planned)*.
-   An empty line or `None` in the subject means no functions are allowed. Function exercises may also
-   use whatever the given `main.c` uses; that is checked on the student's file only, so it doesn't matter.
+1. Copy the list from the subject into the exercise's `allowed` file, one name per line.
+   An empty line or `None` in the subject means no functions are allowed; no `allowed` file means the
+   check is skipped (C++ subjects). Only the student's files are checked, so the test `main.c` may use
+   anything. When the subject hands the student a starter file that calls other functions, add them with
+   a `#` comment line saying why (see `exam_04/1/argo/allowed`).
 2. Compile the student's files to object files only: `gcc -Wall -Wextra -Werror -c`.
 3. List the undefined symbols: `nm -u <file>.o`.
 4. Every symbol must be in `allowed` or in the exception list below. If not, the case fails and the
@@ -50,6 +52,10 @@ Exceptions, always allowed because the compiler adds them, not the student: **[o
 |--------|----------------|
 | `__stack_chk_fail`, `__stack_chk_guard` | stack protector |
 | `_GLOBAL_OFFSET_TABLE_` | position-independent code |
+| `__ctype_b_loc`, `__ctype_tolower_loc`, `__ctype_toupper_loc` | `<ctype.h>` macros; allowed when an `is*` / `to*` function is |
+| `__errno_location` | how `errno` is read; allowed when `errno` is |
+| `__isoc99_<name>` | glibc's name for the scanf family; checked as `<name>` |
+| calls between the solution's own files, or to given files | not external functions |
 | `memcpy`, `memset`, `memmove` | the compiler can emit these for struct copies and array initialisation. Allowed only if the reference solution's `nm -u` also shows them, or if the subject allows them. |
 | C++: `__cxa_*`, `__gxx_personality_v0`, `_Unwind_Resume`, `operator new` / `delete` (`_Znwm`, `_ZdlPv`, ...), `std::` symbols (`_ZNSt*`, `_ZSt*`) | C++ runtime and standard library. C++ subjects usually limit headers or features, not functions, so C++ exercises check only what the subject explicitly forbids. |
 
@@ -62,9 +68,9 @@ A case passes only if **all** of these are true:
 - **No crash.** If the process is killed by a signal (exit code above 128), the case fails and the trace
   gives the signal name: `crash: SIGSEGV`. Get it with `SIG$(kill -l $((status - 128)))` (`kill -l` prints the name without `SIG`). **[our choice]** for
   the message; a crash always fails in the exam.
-- **No timeout.** Each case runs under `timeout` (default **10 s**; `config` can change it *(planned)*).
+- **No timeout.** Each case runs under `timeout` (default **10 s**; `config` can change it).
   Exit code 124 is a failure: `timeout after 10s`. Don't use `sleep` / `ps -p` polling loops. **[our choice]**
-- **Leaks** are checked only when the exercise's `config` turns them on *(planned)*, with
+- **Leaks** are checked only when the exercise's `config` turns them on, with
   `valgrind --leak-check=full --errors-for-leak-kinds=definite --error-exitcode=42`. **[our choice]**
 
 What is compared besides stdout, per exercise type: **[our choice]**
@@ -95,11 +101,18 @@ hello  world$
 
 - `CASE n/N`: case number and number of cases.
 - `FAILED:` the reason, one of `diff`, `crash: SIGSEGV` (any signal name), `timeout after 10s`,
-  `compile error`, `forbidden function: <name>`, `leaks`.
+  `exit code differs`, `stderr differs`, `leaks`.
 - `COMMAND:` the exact command, with every argument shell-quoted so it can be copied and run.
 - `STDIN:` the input file or text, or `(none)`.
-- `EXPECTED` / `GOT`: both outputs through `cat -e`. For `compile error`, `GOT` is the compiler output
-  and `EXPECTED` is left out. For `forbidden function`, both are left out.
+- `EXPECTED` / `GOT`: both outputs through `cat -e`.
+
+Failures before any case runs use a shorter block. The reason is `compile error` (with `GOT:` holding
+the compiler output), `forbidden function: <name>`, or `reference did not compile` (a tester bug):
+
+```
+=== FAILED: forbidden function: strdup ===
+=== END ===
+```
 - Write the trace with `printf`, never with `echo '\n'` (that prints a literal `\n`).
 - Stop at the first failing case.
 
@@ -156,39 +169,66 @@ Each tester has at least **8 cases**. **[our choice]** Pick the ones that apply 
 ├── attachment/subject.en.txt   subject shown to the student, plus any given files
 ├── <name>.c                    reference solution, assumed correct (several files or .cpp/.hpp when needed)
 ├── main.c                      function exercises only: the test main
-├── allowed                     (planned, #5) allowed functions, one per line
-├── cases                       (planned, #5) test cases, one per line
-├── config                      (planned, #5) optional per-exercise settings
+├── allowed                     allowed functions, one per line (no file: not checked)
+├── cases                       test cases, one per line
+├── config                      optional per-exercise settings
+├── inputs/                     optional: files fed on stdin by `stdin:` cases
 ├── wrong/                      (planned, #6) known-wrong solutions
-├── tester.sh                   today: the tester; after #5: only for custom testers
+├── tester.sh                   custom testers only: used instead of the shared runner
 └── beta                        optional: contributor name, shows a "beta exercise" warning
 ```
 
-**`cases`** *(planned)*: one case per line. The arguments are written in shell-quoted form, exactly as on a
-command line. A `stdin:` prefix gives the file (relative to the exercise folder) to feed on stdin. Lines
-starting with `#` and empty lines are ignored.
+**How the runner builds an exercise**: by default the reference sources are every top-level `.c` / `.cpp`
+file except `main.c` / `main.cpp`, and the student must hand in files with the same names in
+`rendu/<name>/`. A `main.c` (or `main.cpp`) is the test main of a function exercise and is linked with
+both. `files` in `config` changes this (below). The solution's files get `-Wall -Wextra -Werror`; the test
+main and other given sources are ours and are built with `-w`. Any `.cpp` file switches to
+`c++ -std=c++98`. Given headers are copied next to the student's files; the student's own headers win.
+The programs run from `.system/grading/`, so a case can name a file there (`inputs/map1`).
+
+**`cases`**: one case per line, in the arguments' shell-quoted form, exactly as on a command line. Lines
+starting with `#` and empty lines are ignored, so a case with no arguments is written `(no args)`. A
+`stdin: <file>` prefix feeds `inputs/<file>` on stdin; any arguments follow the file name. A file ending
+in `.sh` is run and its output piped in instead (for input that arrives in chunks). Without a prefix,
+stdin is `/dev/null`.
 
 ```
-# no arguments
+# comment
+(no args)
 "hello world"
 "" "abc"
 $'tab\there'
-stdin: input/no_final_newline.txt
+stdin: no_final_newline.txt
+stdin: two_lines.txt "pattern"
 ```
 
-**`config`** *(planned)*: `key=value` lines, all optional.
+**`config`**: `key=value` lines, all optional.
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `timeout` | `10` | seconds per case |
+| `cflags` | (none) | extra compile flags |
+| `buffer_sizes` | (none) | build and run every case once per `-D BUFFER_SIZE=` value |
+| `exit_code` | `off` | `on`: the exit code must match the reference |
+| `stderr` | `off` | `on`: stderr (through `cat -e`) must match the reference |
+| `leaks` | `off` | `on`: fail if valgrind reports definitely lost memory (skipped if valgrind is missing) |
+| `files` | (none) | the files the student hands in. A list (`files=vect2.hpp vect2.cpp`): exactly these, and other sources here are given. Patterns (`files=*.c *.h`): any matching files, and there is no test main |
+| `ldflags` | (none) | extra link flags (`-lm`) |
+| `sort_output` | `off` | `on`: sort the output lines before comparing (any order is allowed) |
+| `ignore` | (none) | extended regex; matching output lines are dropped before comparing |
 
 ```
 timeout=10
-cflags=-D BUFFER_SIZE=42
 buffer_sizes=1 42 10000000
-leaks=on
+exit_code=on
 ```
 
-**Custom `tester.sh`**: allowed only when `cases` can't describe the exercise (`microshell`, `mini_serv`,
-the C++ modules, anything needing several processes or a network). A custom tester must still follow
+**Custom `tester.sh`**: allowed only when `cases` can't describe the exercise (servers, several
+processes, per-case output filters). Today: `STUD_PART/exam_04/0/picoshell` and
+`STUD_PART/exam_06/0/mini_serv`. A custom tester must still follow
 sections 1–4: same flags, same pass/fail rules, the same trace format, and `touch
-.system/grading/passed` when every case passes.
+.system/grading/passed` when every case passes. Source `.system/trace.sh` and write the trace with its
+`trace_case` / `trace_build` functions, as the runner does.
 
 ## 7. Known-wrong solutions and definition of done
 

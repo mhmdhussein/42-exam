@@ -1,0 +1,13 @@
+getc
+ungetc
+printf
+malloc
+calloc
+realloc
+free
+isdigit
+fscanf
+write
+# used by the given attachment/argo.c
+fopen
+putchar

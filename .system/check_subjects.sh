@@ -1,5 +1,6 @@
 #!/bin/bash
-# Runs every exercise's tester.sh against its own reference solution, in an
+# Runs every exercise's tester (its own tester.sh, or the shared runner
+# .system/run_tests.sh on its cases file) against its reference solution, in an
 # isolated copy of the repo. Each exercise must pass with the reference and
 # fail with an empty submission.
 #   bash .system/check_subjects.sh [filter]   (filter: substring of the exercise path)
@@ -16,10 +17,15 @@ run_tester() {
     mkdir -p "$sandbox/.system/grading" "$sandbox/rendu/$name"
     cp "$ROOT"/.system/*.sh "$sandbox/.system/"
     find "$ex" -maxdepth 1 -type f -exec cp {} "$sandbox/.system/grading/" \;
+    [ -d "$ex/inputs" ] && cp -r "$ex/inputs" "$sandbox/.system/grading/"
     if [ "$mode" = ref ]; then
-        find "$ex" -maxdepth 1 -type f ! -name tester.sh ! -name beta -exec cp {} "$sandbox/rendu/$name/" \;
+        find "$ex" -maxdepth 1 -type f ! -name tester.sh ! -name beta ! -name cases ! -name allowed             ! -name config -exec cp {} "$sandbox/rendu/$name/" \;
     fi
-    (cd "$sandbox" && timeout "$TIMEOUT" bash .system/grading/tester.sh) >/dev/null 2>&1
+    if [ -f "$ex/tester.sh" ]; then
+        (cd "$sandbox" && timeout "$TIMEOUT" bash .system/grading/tester.sh) >/dev/null 2>&1
+    else
+        (cd "$sandbox" && timeout "$TIMEOUT" bash .system/run_tests.sh "$name") >/dev/null 2>&1
+    fi
     if [ $? -eq 124 ]; then
         result=timeout
     elif [ -e "$sandbox/.system/grading/passed" ]; then
@@ -34,7 +40,7 @@ run_tester() {
 check_one() {
     local ex=$1 rel ref empty
     rel=${ex#"$ROOT"/.subjects/}
-    if [ ! -f "$ex/tester.sh" ]; then
+    if [ ! -f "$ex/tester.sh" ] && [ ! -f "$ex/cases" ]; then
         echo "NO_TESTER  $rel"
         return
     fi

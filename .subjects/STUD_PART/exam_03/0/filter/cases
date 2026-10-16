@@ -1,0 +1,14 @@
+stdin: 01 abc
+stdin: 02 ababc
+stdin: 03 bonjour
+stdin: 04 abc
+stdin: 05 test
+stdin: 06 test
+stdin: 07 aa
+stdin: 08 xyz
+stdin: 09 "very long pattern"
+stdin: chunks.sh abc
+stdin: 10 12
+stdin: 11 
+stdin: 12 ""
+stdin: 13 a b

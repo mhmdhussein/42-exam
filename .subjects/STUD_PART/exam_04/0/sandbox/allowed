@@ -1,0 +1,14 @@
+fork
+waitpid
+exit
+alarm
+sigaction
+kill
+printf
+strsignal
+errno
+sigaddset
+sigemptyset
+sigfillset
+sigdelset
+sigismember

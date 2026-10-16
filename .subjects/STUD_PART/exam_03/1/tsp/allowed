@@ -1,0 +1,22 @@
+write
+sqrtf
+getline
+fseek
+fscanf
+ferror
+feof
+fabsf
+memcpy
+fprintf
+fclose
+malloc
+calloc
+realloc
+free
+fopen
+errno
+stderr
+stdin
+stdout
+# used by the given attachment/tsp.c
+printf

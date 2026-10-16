@@ -97,3 +97,6 @@ Each exercise is a folder `.subjects/<STUD_PART|PISCINE_PART>/exam_0X/<level>/<n
   test case with the test arguments; after each call, if `.system/grading/traceback` exists it moves it to the root and
   exits 1; at the end it runs `touch .system/grading/passed`.
 - `beta` (optional): contributor name; shows a "beta exercise" warning when grading.
+
+The `auto_correc_*.sh` scripts and per-exercise `tester.sh` copies were later replaced by the shared runner
+`.system/run_tests.sh` and per-exercise `cases` files; see [docs/TESTER_GUIDE.md](../docs/TESTER_GUIDE.md).

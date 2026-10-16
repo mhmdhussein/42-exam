@@ -1,0 +1,9 @@
+atoi
+printf
+fprintf
+malloc
+calloc
+realloc
+free
+stdout
+write

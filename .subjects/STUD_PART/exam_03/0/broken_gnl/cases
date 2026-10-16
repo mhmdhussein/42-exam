@@ -1,0 +1,8 @@
+inputs/basic
+inputs/empty
+inputs/empty_lines
+inputs/long
+inputs/no_nl
+inputs/only_nl
+inputs/single
+stdin: basic

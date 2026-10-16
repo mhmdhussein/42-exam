@@ -103,17 +103,23 @@ void exam::grademe(void)
     }
 }
 
-// ==> Run tester.sh: 1 on pass, 0 on fail (trace moved to traces/), -1 if there is no tester
+// ==> Run the exercise's custom tester.sh, or the shared runner on its cases file:
+// 1 on pass, 0 on fail (trace moved to traces/), -1 if there is no tester
 int exam::run_tester(void)
 {
-    if (!file_exists(".system/grading/tester.sh"))
+    std::string cmd_system_call;
+    if (file_exists(".system/grading/tester.sh"))
+        cmd_system_call = "bash .system/grading/tester.sh";
+    else if (file_exists(".system/grading/cases"))
+        cmd_system_call = "bash .system/run_tests.sh " + current_ex->get_name();
+    else
     {
         std::cout << "Error: Unable to find grading script for this exercise, it's coming soon. You can use \"force_success\" to pass this ex." << std::endl;
         return (-1);
     }
 
     remove(".system/grading/passed");
-    system("bash .system/grading/tester.sh");
+    system(cmd_system_call.c_str());
 
     if (file_exists(".system/grading/passed"))
         return (1);
