@@ -1,0 +1,14 @@
+read
+write
+strlen
+memmem
+memmove
+malloc
+calloc
+realloc
+free
+printf
+fprintf
+stdout
+stderr
+perror
