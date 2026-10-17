@@ -228,7 +228,9 @@ processes, per-case output filters). Today: `STUD_PART/exam_04/0/picoshell` and
 `STUD_PART/exam_06/0/mini_serv`. A custom tester must still follow
 sections 1–4: same flags, same pass/fail rules, the same trace format, and `touch
 .system/grading/passed` when every case passes. Source `.system/trace.sh` and write the trace with its
-`trace_case` / `trace_build` functions, as the runner does.
+`trace_case` / `trace_build` functions, as the runner does. A tester that starts processes kills them
+by PID in an `EXIT` trap (never `killall`) and waits for output instead of sleeping a fixed time; the
+`mini_serv` tester does both, and opens its clients with bash's `/dev/tcp`, so it needs no `nc`.
 
 ## 7. Known-wrong solutions and definition of done
 
