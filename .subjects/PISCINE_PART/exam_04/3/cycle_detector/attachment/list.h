@@ -1,32 +1,22 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   is.c                                               :+:      :+:    :+:   */
+/*   list.h                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: angavrel <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: fwuensch <fwuensch@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/12/06 16:35:57 by angavrel          #+#    #+#             */
-/*   Updated: 2016/12/06 16:36:00 by angavrel         ###   ########.fr       */
+/*   Created: 2019/03/25 14:27:13 by fwuensch          #+#    #+#             */
+/*   Updated: 2019/03/25 15:14:43 by fwuensch         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "rpn_calc.h"
+#ifndef LIST_H
+# define LIST_H
 
-int	is_op(int c)
+typedef struct     s_list
 {
-	return (c == '+' ||
-			c == '-' ||
-			c == '*' ||
-			c == '/' ||
-			c == '%');
-}
+    int            data;
+    struct s_list  *next;
+}                  t_list;
 
-int	is_digit(int c)
-{
-	return ('0' <= c && c <= '9');
-}
-
-int	is_space(int c)
-{
-	return (c == 32);
-}
+#endif

@@ -1,25 +1,28 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   main.c                                             :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: angavrel <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/11/24 20:36:22 by angavrel          #+#    #+#             */
-/*   Updated: 2017/02/26 12:43:29 by angavrel         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include <unistd.h>
+#include <stdlib.h>
 
 void	print_memory(const void *addr, size_t size);
 
-int		main(void)
+// Each argument is a hex byte string ("00ff41"); the bytes are printed with
+// print_memory. "subject": the int array from the subject.
+int	main(int argc, char **argv)
 {
-	int		tab[15] = {3772900067, 58597, 59111,
-		59625, 60139, 60653, 61167, 61681, 62195, 62709, 63223, 63737, 64251,
-	64765, 65279};
+	unsigned char	buf[4096];
+	size_t			n;
+	char			*s;
+	char			hex[3];
+	int				tab[10] = {0, 23, 150, 255, 12, 16, 21, 42};
 
-	print_memory(tab, sizeof(tab));
+	if (argc == 2 && argv[1][0] == 's')
+		return (print_memory(tab, sizeof(tab)), 0);
+	n = 0;
+	for (int i = 1; i < argc; i++)
+		for (s = argv[i]; s[0] && s[1] && n < sizeof(buf); s += 2)
+		{
+			hex[0] = s[0];
+			hex[1] = s[1];
+			hex[2] = 0;
+			buf[n++] = (unsigned char)strtol(hex, NULL, 16);
+		}
+	print_memory(buf, n);
 	return (0);
 }
