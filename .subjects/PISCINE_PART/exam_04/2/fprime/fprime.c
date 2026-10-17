@@ -1,46 +1,51 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   fprime.c                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: fwuensche <fwuensche@student.42.fr>        +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2019/03/04 15:47:01 by fwuensche         #+#    #+#             */
-/*   Updated: 2019/03/05 07:40:34 by fwuensche        ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+// Passed Moulinette 2019.09.01
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-void	fprime(unsigned int nb)
+int		is_prime(int n)
 {
-	unsigned int	prime;
+	int i = 2;
 
-	if (nb == 1)
-		printf("1");
-	else
+	while (i < n)
 	{
-		prime = 2;
-		while (nb > 1)
+		if (n % i == 0)
+			return (0);
+		++i;
+	}
+	return (1);
+}
+
+void	fprime(char *str)
+{
+	int n = atoi(str);
+	int factor = 2;
+	int first = 1;
+
+	if (n == 1)
+		printf("1");
+
+	while (factor <= n)
+	{
+		if (n % factor == 0 && is_prime(factor))
 		{
-			if (nb % prime == 0)
-			{
-				printf("%d", prime);
-				nb /= prime;
-				if (nb > 1)
-					printf("*");
-				prime--;
-			}
-			prime++;
+			if (first == 1)
+				printf("%d", factor);
+			else
+				printf("*%d", factor);
+			first = 0;
+			n = n / factor;
 		}
+		else
+			++factor;
 	}
 }
 
-int		main(int ac, char **av)
+int		main(int argc, char **argv)
 {
-	if (ac == 2 && *av[1])
-		fprime(atoi(av[1]));
+	if (argc == 2)
+		fprime(argv[1]);
+
 	printf("\n");
 	return (0);
 }

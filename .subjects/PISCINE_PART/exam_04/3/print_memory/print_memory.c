@@ -1,70 +1,41 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   print_memory.c                                     :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: angavrel <angavrel@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2017/02/27 11:56:32 by angavrel          #+#    #+#             */
-/*   Updated: 2017/05/09 09:49:25 by angavrel         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #include <unistd.h>
 
-void	ft_putchar(char c)
+static void	print_hex_byte(unsigned char c)
 {
-	write(1, &c, 1);
-}
-
-void	ft_putstr(char *s)
-{
-	while (*s)
-		ft_putchar(*s++);
-}
-
-void	ft_printhex(int n)
-{
-	int c;
-
-	if (n >= 16)
-		ft_printhex(n / 16);
-	c = n % 16 + (n % 16 < 10 ? '0' : 'a' - 10);
-	ft_putchar(c);
-}
-
-void	ft_printchars(unsigned char c)
-{
-	ft_putchar((c > 31 && c < 127) ? c : '.');
+	write(1, &"0123456789abcdef"[c / 16], 1);
+	write(1, &"0123456789abcdef"[c % 16], 1);
 }
 
 void	print_memory(const void *addr, size_t size)
 {
-	unsigned char *t = (unsigned char *)addr;
-	size_t		i = 0;
-	int			col;
-	size_t		tmp = 0;
+	const unsigned char	*p = addr;
+	size_t				line;
+	size_t				i;
 
-	while (i < size)
+	line = 0;
+	while (line < size)
 	{
-		col = -1;
-		tmp = i;
-		while (++col < 16)
+		i = 0;
+		while (i < 16)
 		{
-			if (i < size)
-			{
-				if (t[i] < 16)
-					ft_putchar('0');
-				ft_printhex(t[i]);
-			}
+			if (line + i < size)
+				print_hex_byte(p[line + i]);
 			else
-				ft_putstr("  ");
-			ft_putchar((i++ & 1) << 6);
+				write(1, "  ", 2);
+			if (i % 2)
+				write(1, " ", 1);
+			i++;
 		}
-		col = -1;
-		i = tmp;
-		while (++col < 16 && i < size)
-			ft_printchars(t[i++]);
-		ft_putchar('\n');
+		i = 0;
+		while (i < 16 && line + i < size)
+		{
+			if (p[line + i] >= 32 && p[line + i] < 127)
+				write(1, &p[line + i], 1);
+			else
+				write(1, ".", 1);
+			i++;
+		}
+		write(1, "\n", 1);
+		line += 16;
 	}
 }

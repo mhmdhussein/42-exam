@@ -1,0 +1,30 @@
+/* wrong: allocates with calloc, which is not allowed */
+// Passed Moulinette 2019.09.01
+
+#include <stdlib.h>
+
+
+int		*ft_rrange(int start, int end)
+{
+	int number_of_ints;
+	int *array;
+	int step;
+	int i;
+
+	number_of_ints = 1 + (end > start ? end - start : start - end);
+	array = calloc(number_of_ints, sizeof(int));
+
+	if (start > end)
+		step = 1;
+	else
+		step = -1;
+
+	i = 0;
+	while (i < number_of_ints)
+	{
+		array[i] = end;
+		end = end + step;
+		++i;
+	}
+	return (array);
+}
