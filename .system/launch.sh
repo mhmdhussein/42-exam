@@ -2,6 +2,7 @@
 # Checks the environment, then starts the exam binary built by `make`.
 
 RED="\033[31m"
+YELLOW="\033[33m"
 BOLD="\033[1m"
 RESET="\033[0m"
 
@@ -24,6 +25,12 @@ fi
 rm -f "$tmp"
 
 [ -x .system/a.out ] || fail "Binary not found, run 'make' first."
+
+if [[ $PWD == /mnt/* ]]; then
+    printf "$YELLOW$BOLD!$RESET Running from %s, on the Windows drive: grading is slow and timing\n" "$PWD"
+    printf "  tests can fail. Clone the repo in your Linux home folder instead (see the README).\n"
+    sleep 3
+fi
 
 if [ -z "$USER" ]; then
     USER=$(whoami)

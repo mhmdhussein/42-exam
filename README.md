@@ -9,7 +9,52 @@ before you can grade again grows with each failed attempt, like the real examshe
 ## Requirements
 
 Linux or WSL with `gcc`, `g++`, `clang`, `make` and the readline headers
-(`libreadline-dev` on Debian/Ubuntu, `readline-devel` on Fedora).
+(`libreadline-dev` on Debian/Ubuntu, `readline-devel` on Fedora). `valgrind` is optional: without
+it, exercises that check for leaks skip that check.
+
+### Windows (WSL)
+
+The simulator doesn't run on Windows itself; use it inside WSL.
+
+1. Install WSL with Ubuntu, from PowerShell as administrator, then restart and open **Ubuntu**:
+
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+
+2. Install the tools, in Ubuntu:
+
+   ```sh
+   sudo apt update
+   sudo apt install gcc g++ clang make libreadline-dev valgrind git
+   ```
+
+3. Clone the repo **in your Linux home folder**, not under `/mnt/c/...`:
+
+   ```sh
+   cd ~
+   git clone https://github.com/mhmdhussein/42-exam.git 42-EXAM
+   cd 42-EXAM
+   make
+   ```
+
+   Files under `/mnt/c` are on the Windows drive: every file access goes through a slow bridge, so
+   compiling and grading take much longer and testers that wait on timing (like `mini_serv`) can fail
+   for no reason. File permissions there are also emulated. `make` and `make check-subjects` print a
+   warning when they run from `/mnt/`.
+
+4. To edit with VS Code, install the **WSL** extension and run `code .` from the repo folder in
+   Ubuntu. Your Windows files stay reachable from Ubuntu at `/mnt/c/Users/<you>/`.
+
+**`\r` errors** (`$'\r': command not found`, `bad interpreter`): the repo was checked out with Windows
+line endings, usually by cloning with Windows git. `.gitattributes` forces LF, so re-checking out the
+files fixes it:
+
+```sh
+git rm --cached -r . && git reset --hard
+```
+
+This throws away uncommitted changes. Or clone again inside WSL as in step 3.
 
 ## Usage
 
