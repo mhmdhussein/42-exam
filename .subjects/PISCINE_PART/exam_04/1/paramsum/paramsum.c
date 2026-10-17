@@ -1,32 +1,24 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   paramsum.c                                         :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: angavrel <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/12/07 17:58:26 by angavrel          #+#    #+#             */
-/*   Updated: 2016/12/08 17:15:42 by angavrel         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+// Passed Moulinette 2019.09.01
 
 #include <unistd.h>
 
-void	ft_putchar(char c)
-{
-	write(1, &c, 1);
-}
-
 void	ft_putnbr(int n)
 {
-	if (n > 9)
+	char digit;
+
+	if (n >= 10)
 		ft_putnbr(n / 10);
-	ft_putchar(n % 10 +'0');
+
+	digit = (n % 10) + '0';
+	write(1, &digit, 1);
 }
 
-int		main(int ac, char **av)
+int		main(int argc, char **argv)
 {
-	av = 0;
-	ft_putnbr(ac - 1);
+	(void)argv;		// Silence 'unused parameter' error
+
+	ft_putnbr(argc - 1);
 	write(1, "\n", 1);
+
+	return (0);
 }

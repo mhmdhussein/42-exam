@@ -1,7 +1,8 @@
+/* wrong: ignores the '-' sign */
 #include <stdio.h>//
 #include <stdlib.h>//
 
-int isblank(char c)
+int is_blank(char c)
 {
 	if (c <= 32)
 		return (1);
@@ -36,18 +37,11 @@ int		ft_atoi_base(const char *str, int str_base)
 	int sign;
 
 	result = 0;
-	while (isblank(*str))
+	while (is_blank(*str))
 		str++;
-	sign = (*str == '-') ? -1 : 1;
+	sign = 1;
 	(*str == '-' || *str == '+') ? ++str : 0;
 	while (isvalid(*str, str_base))
 		result = result * str_base + value_of(*str++);
 	return (result * sign);
 }
-
-int		main(int ac, char **av)//
-{//
-	if (ac == 3)//
-		printf("result: %d\n", ft_atoi_base(av[1], atoi(av[2])));//
-	return (0);//
-}//

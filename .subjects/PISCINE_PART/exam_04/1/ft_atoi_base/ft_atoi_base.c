@@ -1,16 +1,19 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_atoi_base.c                                     :+:      :+:    :+:   */
+/*   atoi_base.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: angavrel <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: jcluzet <jcluzet@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/12/27 10:58:15 by angavrel          #+#    #+#             */
-/*   Updated: 2016/12/27 10:58:30 by angavrel         ###   ########.fr       */
+/*   Created: 2022/01/17 17:43:40 by mbarutel          #+#    #+#             */
+/*   Updated: 2022/05/21 02:22:26 by jcluzet          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-int isblank(char c)
+#include <stdio.h>//
+#include <stdlib.h>//
+
+int is_blank(char c)
 {
 	if (c <= 32)
 		return (1);
@@ -45,7 +48,7 @@ int		ft_atoi_base(const char *str, int str_base)
 	int sign;
 
 	result = 0;
-	while (isblank(*str))
+	while (is_blank(*str))
 		str++;
 	sign = (*str == '-') ? -1 : 1;
 	(*str == '-' || *str == '+') ? ++str : 0;
