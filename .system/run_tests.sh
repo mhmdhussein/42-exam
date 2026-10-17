@@ -216,7 +216,7 @@ leak_free() {
     [[ $input == *.sh ]] && { bash "$input" > run/stdin; input=run/stdin; }
     timeout -k 2 "$((TIMEOUT * 5))" valgrind -q --leak-check=full --errors-for-leak-kinds=definite \
         build_stud/prog "$@" < "$input" > /dev/null 2> run/valgrind
-    ! grep -q 'definitely lost: [1-9]' run/valgrind
+    ! grep -q 'definitely lost' run/valgrind
 }
 
 # Shell-quotes one argument for the trace: "text" when that is exact, else $'...'.
