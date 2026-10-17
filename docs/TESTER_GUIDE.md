@@ -11,8 +11,8 @@ the same inputs and compare the results. Each rule is tagged:
 - **[our choice]**: our decision. The real grader may be more or less strict.
 
 Most exercises are graded by the shared runner `.system/run_tests.sh`, which applies these rules to the
-exercise's `cases` / `allowed` / `config` files (section 6). The `wrong/` solutions (#6) are still
-planned and marked *(planned)*.
+exercise's `cases` / `allowed` / `config` files (section 6). `make check-subjects` proves each tester
+with the exercise's known-wrong solutions in `wrong/` (section 7).
 
 ## 1. Compiling
 
@@ -173,7 +173,7 @@ Each tester has at least **8 cases**. **[our choice]** Pick the ones that apply 
 ├── cases                       test cases, one per line
 ├── config                      optional per-exercise settings
 ├── inputs/                     optional: files fed on stdin by `stdin:` cases
-├── wrong/                      (planned, #6) known-wrong solutions
+├── wrong/                      known-wrong solutions; each one must fail
 ├── tester.sh                   custom testers only: used instead of the shared runner
 └── beta                        optional: contributor name, shows a "beta exercise" warning
 ```
@@ -232,11 +232,17 @@ sections 1–4: same flags, same pass/fail rules, the same trace format, and `to
 
 ## 7. Known-wrong solutions and definition of done
 
-### Writing wrong solutions *(planned, #6)*
+### Writing wrong solutions
 
 Each exercise has a `wrong/` folder of solutions that are almost right. Each file is named after its bug
-(`missing_newline.c`, `int_min.c`, `uses_forbidden_strdup.c`). `make check-subjects` runs the tester on
-each one; every one must fail, and one that passes is reported as `LEAKY`. **[our choice]**
+(`missing_newline.c`, `int_min.c`, `uses_forbidden_strdup.c`) and starts with a one-line comment saying
+what is wrong. A file replaces the reference's source file (`ft_strdup.c`); for an exercise with several
+student files, a folder `wrong/<bug>/` is the whole submission. Make each one a small change to a correct
+solution, with exactly one bug, the kind a student really makes.
+
+`make check-subjects` runs the tester on each one; every one must fail. One that passes is reported as
+`LEAKY <exercise> (passes: <file>)` and makes the check fail: add cases until the tester catches it,
+never delete the wrong solution. **[our choice]**
 
 At least **3** per exercise, including one that uses a forbidden function and one that crashes or loops
 forever. Standard set to choose from:
@@ -259,6 +265,6 @@ A tester is done when:
 - [ ] it has at least 8 cases covering the section 5 checklist for its type
 - [ ] the reference passes (`check-subjects` says `OK`)
 - [ ] an empty submission fails (not `WEAK`)
-- [ ] every solution in `wrong/` fails (not `LEAKY`) *(planned)*
+- [ ] every solution in `wrong/` fails (not `LEAKY`)
 
 Check with `bash .system/check_subjects.sh <exam_0X/name>`.
