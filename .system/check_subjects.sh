@@ -9,6 +9,8 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 JOBS=${JOBS:-$(nproc)}
 TIMEOUT=${TIMEOUT:-180}
 
+[[ $ROOT == /mnt/* ]] && echo "warning: running from $ROOT, on the Windows drive: slow, and timing tests can fail. See the README (Windows / WSL)." >&2
+
 # Run one tester in a fresh sandbox; $2 = "ref", "empty" or "wrong:<entry of wrong/>".
 # Prints passed/failed/timeout. A wrong/ file replaces the reference's source file;
 # a wrong/ folder is the whole submission.
