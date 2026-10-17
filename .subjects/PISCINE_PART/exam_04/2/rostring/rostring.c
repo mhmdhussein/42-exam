@@ -1,60 +1,63 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   rostring.c                                         :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: fwuensche <fwuensche@student.42.fr>        +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/12/02 17:47:50 by angavrel          #+#    #+#             */
-/*   Updated: 2019/03/05 08:51:49 by fwuensche        ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+// Passed Moulinette 2019.09.01
 
 #include <unistd.h>
 
-int		ft_isblank(char c)
+int		skip_whitespace(char *str, int i)
 {
-	return (c == ' ' || c == '\t');
+	while (str[i] == ' ' || str[i] == '\t')
+		++i;
+	return (i);
 }
 
-void	rostring(char *s)
+int		ft_wordlen(char *str)
 {
-	int		i = 0;
-	int		first_word_length = 0;
+	int i = 0;
 
-	while (s[i])
+	while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t')
+		++i;
+	return (i);
+}
+
+int		print_word(char *str, int i, int *is_first)
+{
+	int word_len;
+
+	i = skip_whitespace(str, i);
+	word_len = ft_wordlen(str + i);
+	if (*is_first == 0)
+		write(1, " ", 1);
+	write(1, str + i, word_len);
+	*is_first = 0;
+	return (i + word_len);
+}
+
+int		epur_str(char *str)
+{
+	int i = 0;
+	int is_first = 1;
+
+	i = skip_whitespace(str, i);
+	while (str[i] != '\0')
 	{
-		// skip beggining whitespaces
-		while (ft_isblank(s[i]))
-			i++;
-		if (s[i] && !ft_isblank(s[i]))
-		{
-			// if it's the beggining
-			if (first_word_length == 0)
-				// keep the length of first word for later
-				while (s[i] && !ft_isblank(s[i++]))
-					first_word_length++;
-			else
-			{
-				// for other words, just write it to stdout (+ one whitespace)
-				while (s[i] && !ft_isblank(s[i]) && write(1, &s[i++], 1));
-				write(1, " ", 1);
-			}
-		}
+		i = print_word(str, i, &is_first);
+		i = skip_whitespace(str, i);
 	}
-
-	// write first word
-	i = 0;
-	while (ft_isblank(s[i]))
-		i++;
-	while (first_word_length--)
-		write(1, &s[i++], 1);
+	return (is_first);
 }
 
-int		main(int ac, char **av)
+int		main(int argc, char **argv)
 {
-	if (ac > 1 && *av[1])
-		rostring(av[1]);
+	if (argc >= 2)
+	{
+		char *str = argv[1];
+		int i = 0;
+		int is_first;
+
+		i = skip_whitespace(str, i);
+		i = i + ft_wordlen(str + i);
+		is_first = epur_str(str + i);
+		print_word(str, 0, &is_first);
+	}
 	write(1, "\n", 1);
 	return (0);
 }

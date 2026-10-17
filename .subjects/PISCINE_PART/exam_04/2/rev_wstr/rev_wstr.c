@@ -3,81 +3,64 @@
 /*                                                        :::      ::::::::   */
 /*   rev_wstr.c                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fwuensch <fwuensch@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aarbaoui <aarbaoui@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2019/03/05 10:07:32 by exam              #+#    #+#             */
-/*   Updated: 2019/03/05 12:01:44 by fwuensch         ###   ########.fr       */
+/*   Created: 2023/01/18 14:03:03 by aarbaoui          #+#    #+#             */
+/*   Updated: 2023/01/18 14:50:08 by aarbaoui         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <unistd.h>
 
-int		str_length(char *str)
+void ft_putchar(char c)
 {
-	int	len = 0;
-
-	while (*str)
-	{
-		str++;
-		len++;
-	}
-	return (len);
+	write(1, &c, 1);
 }
 
-int		iswhitespace(char chr)
+int ft_strlen(char *str)
 {
-	return (chr == ' ' || chr == '\t');
+	int i = 0;
+	
+	while (str[i])
+		i++;
+	return (i);
 }
 
-void	print_reverse(char *str)
+int main(int ac, char *av[])
 {
-	// let's use three pointers to traverse the string backwards
-	// the fast pointer will, dah, move faster then the others
-	// mainly:
-	int fast;	// will be placed at the start of a word
-	int slow;	// will be placed at the end of a word
-	int curr;	// will traverse the current word so we can write to stdout
+	char *tmp;
+	char *rev;
+	int len;
 
-	// shall we start at the end of the string
-	fast = str_length(str) - 1;
-	slow = fast;
-	curr = fast;
-
-	// until we reach the beginning of the string
-	while (fast >= 0)
-	{
-		// here, fast should be at the last char of a word
-		// so we place every pointer in the same place
-		slow = fast;
-		curr = fast;
-		// now we place fast at the first char of the current word
-		while (fast >= 0 && !iswhitespace(str[fast]))
-			fast--;
-		fast++;
-		// we'll place curr where fast is, so we can write the curr word
-		curr = fast;
-		while (curr <= slow)
-		{
-			write(1, &str[curr], 1);
-			curr++;
-		}
-		// now that we wrote the word, we add a whitespace
-		// except that we should not add a whitespace for the last word
-		if (fast > 0)
-			write(1, " ", 1);
-		// and we interrupt the loop if fast is at the first char
-		// if it is not, so we move it two steps back
-		fast--;
-		fast--;
-		// now we should be at the last char of previous word
-		// so we can just repeat the process
-	}
-}
-
-int		main(int ac, char **av)
-{
 	if (ac == 2)
-		print_reverse(av[1]);
-	write(1, "\n", 1);
-	return (1);
+	{
+		tmp = av[1];
+		len = ft_strlen(tmp);
+		rev = NULL;
+		len--;
+		while (tmp[len])
+		{
+			if (tmp[len - 1] == ' ')
+			{
+				rev = &tmp[len];
+				while (*rev && *rev != ' ')
+				{
+					ft_putchar(*rev);
+					rev++;
+				}
+				ft_putchar(' ');
+			}
+			else if (len == 0)
+			{
+				rev = &tmp[len];
+				while (*rev && *rev != ' ')
+				{
+					ft_putchar(*rev);
+					rev++;
+				}
+			}
+			len--;
+		}
+	}
+	ft_putchar('\n');
 }
