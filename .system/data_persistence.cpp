@@ -52,50 +52,23 @@ void exam::restore_data(void)
     }
     else
     {
-        std::cout << "Error: can't open backup" << std::endl;
+        display->message(Msg::BackupOpenError);
     }
 
     file.close();
 
     if (backup.end_time > time(0))
     {
-        system("clear");
-        std::cout << std::endl
-                  << RED << BOLD << "       !!" << BOLD << WHITE << " BACKUP " << RED << BOLD << "!!" << std::endl
-                  << std::endl;
-        if (backup.student)
-            std::cout << WHITE << BOLD << "        EXAMRANK " << LIME << "0" << backup.exam_number << WHITE << std::endl;
-        else
-            std::cout << WHITE << BOLD << "        EXAMWEEK " << LIME << "0" << backup.exam_number << WHITE << std::endl;
-        std::cout << "    CURRENT EX: " << LIME << backup.current_ex->get_name() << RESET << std::endl;
-        std::cout << RED << "    " << remaining_time(backup.end_time) << std::endl;
-        std::cout << RED << "           left" << std::endl
-                  << std::endl;
-
-        std::cout << WHITE << BOLD << "            1" << RESET << std::endl;
-        std::cout << WHITE << BOLD << "    |" << LIME << BOLD << "  RESTORE EXAM  " << WHITE << BOLD << "|" << RESET << BOLD << std::endl
-                  << "     \\ ------------ /" << std::endl
-                  << std::endl;
-        std::cout << WHITE << BOLD << "            2" << RESET << std::endl;
-        std::cout << WHITE << BOLD << "     | " << RED << BOLD << " ERASE EXAM" << WHITE << BOLD << "  |" << RESET << BOLD << std::endl
-                  << "      \\ ---------- /" << std::endl
-                  << std::endl
-                  << std::endl;
-        std::cout << "            ";
-
-        std::string answer;
-        std::cin >> answer;
-        while (answer != "1" && answer != "2")
-        {
-            std::cout << REMOVE_LINE << "            ";
-            std::cin >> answer;
-        }
+        RestoreView r;
+        r.student = backup.student;
+        r.exam_number = backup.exam_number;
+        r.ex_name = backup.current_ex->get_name();
+        r.end_time = backup.end_time;
+        std::string answer = display->restorePrompt(r);
         if (answer == "1")
         {
             std::cin.ignore();
-            std::cout << std::endl
-                      << "   Restoring exam token..." << RESET << std::endl
-                      << std::endl;
+            display->message(Msg::RestoringToken);
             this->start_time = backup.get_start_time();
             this->end_time = backup.get_end_time();
             this->exam_number = backup.get_exam_number();
@@ -110,7 +83,7 @@ void exam::restore_data(void)
         }
         else
         {
-            std::cout << "   Exam token deteled" << std::endl;
+            display->message(Msg::TokenDeleted);
             std::cin.ignore();
             // delete file and return to menu
             system("rm .system/exam_token/current_token.txt");
@@ -142,6 +115,14 @@ void exam::load_settings(void)
             setting_pcd = v;
         file.close();
     }
+    set_display();
+}
+
+// ==> Pick the display matching the "Exact examshell display" setting
+void exam::set_display(void)
+{
+    delete display;
+    display = make_display(setting_esd);
 }
 
 // ==> Save setting_dse bool into .settings file

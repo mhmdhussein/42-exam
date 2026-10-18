@@ -18,14 +18,11 @@ void exam::success_ex(bool force)
         file.open("success/success_ex", std::ios::app);
         file << current_ex->get_name() << std::endl;
     }
-    std::cout << std::endl
-              << LIME << ">>>>>>>>>> SUCCESS <<<<<<<<<<" << RESET << std::endl
-              << std::endl;
+    GradeResult result;
+    result.passed = true;
+    display->showResult(result);
     up_lvl();
-    std::cout << "(Press enter to continue...)" << std::endl;
-    std::string input;
-    if (!std::getline(std::cin, input))
-        sigd();
+    display->waitEnter();
     level_per_ex += level_per_ex_save;
     changex = 0;
     backup = 0;
@@ -46,60 +43,38 @@ void exam::success_ex(bool force)
 void exam::end_exam()
 {
     remove(".system/exam_token/current_token.txt");
-    if (using_cheatcode == 0)
-        std::cout << WHITE << BOLD << "🥳 Congratulation! You have finished the Exam Rank 0" << exam_number << " !" << std::endl;
-    else
-        std::cout << WHITE << BOLD << "🙁 You have finished the Exam Rank 0" << exam_number << ", " << RED << BOLD << "after using " << using_cheatcode << " cheat command..." << WHITE << BOLD << std::endl;
-    std::cout << WHITE << BOLD << "Thanks for studying with us " << LIME << BOLD << username << WHITE << BOLD << " ❤️" << std::endl;
+    ExamSummary summary;
+    summary.exam_number = exam_number;
+    summary.cheat_count = using_cheatcode;
+    summary.username = username;
+    display->showEnd(summary);
     exit(0);
 }
 
 // ==> GradeMe function call by entering `grademe` into prompt
 void exam::grademe(void)
 {
+    std::string beta_author;
     if (file_exists(".system/grading/beta"))
     {
-        std::cout << std::endl;
-        std::cout << YELLOW << " ⚠️  Warning: " << RESET << "This exercise is a contribution by ";
-        // output what is in .system/grading/beta
         std::ifstream file;
         file.open(".system/grading/beta");
-        std::string line;
-        std::getline(file, line);
-        std::cout << YELLOW << line << RESET;
-        std::cout << ", it's still in " << YELLOW << "beta testing" << RESET << "." << std::endl;
-        std::cout << " See the README for the exercise format." << std::endl;
-        std::cout << " If you find any " << RED << "bug" << RESET << ", fix it in the exercise folder." << std::endl;
+        std::getline(file, beta_author);
     }
 
-    std::cout << std::endl
-              << "Before continuing, please make " << RED << "ABSOLUTELY SURE" << RESET << " that you are in the right directory," << std::endl;
-    std::cout << "that you didn't forget anything, etc..." << std::endl;
-    std::cout << "If your assignment is wrong, you will have the same assignment" << std::endl;
-    std::cout << std::endl
-              << " but with less potential points to earn !" << std::endl;
-    std::cout << RED << "Are you sure?" << RESET << " [y/N] ";
-    std::string input;
-    if (!std::getline(std::cin, input))
-        sigd();
-    if (input == "y" || input == "Y")
+    if (display->confirmGrade(beta_author))
     {
         if (current_ex->time_bef_grade > time(NULL) && waiting_time)
         {
-            std::cout << RED << "ERROR: " << RESET << "You must wait at least " << YELLOW << BOLD;
-            if ((((current_ex->time_bef_grade - time(NULL))) / 60) >= 1)
-                std::cout << (current_ex->time_bef_grade - time(NULL)) / 60 << " minutes" << RESET << " and " << YELLOW << BOLD << (current_ex->time_bef_grade - time(NULL)) % 60 << " seconds" << RESET;
-            else
-                std::cout << (current_ex->time_bef_grade - time(NULL)) << " seconds" << RESET;
-            std::cout << " until next grading request, so take your time to make more tests and be sure you will succeed next try!" << std::endl;
+            display->cooldownError(current_ex->time_bef_grade - time(NULL));
             return;
         }
-        std::cout << "Ok, making grading request to server now." << std::endl;
+        display->message(Msg::GradeRequestSent);
         grade_request(0);
     }
     else
     {
-        std::cout << " Abort" << std::endl;
+        display->message(Msg::GradeAborted);
     }
 }
 
@@ -114,7 +89,7 @@ int exam::run_tester(void)
         cmd_system_call = "bash .system/run_tests.sh " + current_ex->get_name();
     else
     {
-        std::cout << "Error: Unable to find grading script for this exercise, it's coming soon. You can use \"force_success\" to pass this ex." << std::endl;
+        display->message(Msg::NoTester);
         return (-1);
     }
 
@@ -123,25 +98,19 @@ int exam::run_tester(void)
 
     if (file_exists(".system/grading/passed"))
         return (1);
-    std::cout << RED << ">>>>>>>>>> FAILURE <<<<<<<<<<" << RESET << std::endl;
-    sleep(1);
-    std::cout << "You have failed the assignment." << std::endl;
 
     // if there is a traceback file, create a folder traces and copy the file to it with the good name
+    GradeResult result;
+    result.passed = false;
     if (file_exists("traceback"))
     {
         system("mkdir -p traces");
         std::string trace_name = std::to_string(level) + "-" + std::to_string(current_ex->get_assignement()) + "_" + current_ex->get_name() + ".trace";
         std::string cmd_system_call = "mv traceback traces/" + trace_name;
         system(cmd_system_call.c_str());
-        std::cout << "Trace saved to " << LIME << current_path() << "/traces/" << trace_name << RESET << std::endl
-                  << std::endl;
+        result.trace_path = current_path() + "/traces/" + trace_name;
     }
-    else
-    {
-        std::cout << "No traceback found." << std::endl
-                  << std::endl;
-    }
+    display->showResult(result);
     return (0);
 }
 
@@ -149,21 +118,7 @@ int exam::run_tester(void)
 void exam::grade_request(bool i)
 {
     if (!i)
-    {
-        std::cout << std::endl
-                  << "We will now wait for the job to complete." << std::endl
-                  << "Please be " << LIME << "patient" << RESET << ", this " << LIME << "CAN" << RESET " take several minutes..." << std::endl;
-        std::cout << "(10 seconds is fast, 30 seconds is expected, 3 minutes is a maximum)" << std::endl;
-        srand(time(NULL));
-        int waiting_seconds = rand() % 5 + 1;
-        for (int i = 0; i < waiting_seconds; i++)
-        {
-            srand(time(NULL));
-            double random = rand() % 6500000 + 250000;
-            std::cout << "waiting..." << std::endl;
-            usleep(random);
-        }
-    }
+        display->gradingStarted();
 
     int result = run_tester();
     if (result == -1)
@@ -175,13 +130,7 @@ void exam::grade_request(bool i)
     else
     {
         fail_ex();
-        std::cout << "(Press enter to continue...)" << std::endl;
-        std::string input;
-        if (!std::getline(std::cin, input))
-            sigd();
-        if (setting_esd)
-            info_examshell();
-        else
-            info();
+        display->waitEnter();
+        show_status();
     }
 }
