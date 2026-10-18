@@ -5,7 +5,7 @@ LDLIBS   = -lreadline
 
 SRCS = .system/exercise.cpp .system/main.cpp .system/menu.cpp .system/exam.cpp \
        .system/utils.cpp .system/grade_request.cpp .system/data_persistence.cpp \
-       .system/practice.cpp
+       .system/practice.cpp .system/display_legacy.cpp .system/display_examshell.cpp
 OBJDIR = .system/obj
 OBJS = $(SRCS:.system/%.cpp=$(OBJDIR)/%.o)
 
@@ -19,7 +19,7 @@ build: $(NAME)
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) $(LDLIBS) -o $(NAME)
 
-$(OBJDIR)/%.o: .system/%.cpp .system/exam.hpp .system/exercise.hpp
+$(OBJDIR)/%.o: .system/%.cpp .system/exam.hpp .system/exercise.hpp .system/display.hpp
 	@mkdir -p $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 

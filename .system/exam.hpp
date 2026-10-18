@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exercise.hpp"
+#include "display.hpp"
 #include <iostream>
 #include <map>
 
@@ -24,17 +25,6 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#define BOLD "\e[1m"
-#define RESET "\e[0m"
-#define CYAN "\e[36m"
-#define UNDERLINE "\e[4m"
-#define WHITE "\e[97m"
-#define LIME "\e[92m"
-#define RED "\e[91m"
-#define MAGENTA "\e[95m"
-#define YELLOW "\e[93m"
-#define REMOVE_LINE "\e[1A\e[K"
-
 std::string current_path(void);
 std::string remaining_time(time_t end_time);
 std::string lastupdate(time_t end_time);
@@ -45,7 +35,6 @@ exam restore_data(void);
 bool file_exists(std::string path);
 
 void reset_folder(void);
-void connexion(void);
 void sigc(int sig);
 void sigd(void);
 void practice_restore_terminal(void);
@@ -70,22 +59,20 @@ public:
     exam(void);
     exam(exam const &src);
     ~exam(void);
-    void info(void);
     void ask_param(void);
     void fail_ex(void);
     void success_ex(bool force);
-    void explanation(void);
     int get_exam_number(void);
     int get_lvl(void);
     void store_data();
     void up_lvl(void);
-    void exam_help();
     std::string get_path(void);
     time_t get_end_time(void);
     time_t get_start_time(void);
-    void info_examshell(void);
     int change_ex(void);
     void exam_prompt(void);
+    void show_status(void);
+    ExamView make_view(void);
     bool prepare_current_ex(void);
     void copy_ex_files(void);
     int run_tester(void);
@@ -102,18 +89,19 @@ public:
     bool waiting_time;
     int level_max;
     bool changex;
+    Display *display;
 
 private:
     void set_max_time(void);
     void grademe(void);
     void settings_menu(void);
     void grade_request(bool i);
-    void exam_random_show(void);
     void end_exam(void);
     void set_max_lvl(void);
     int stud_menu(void);
     void load_settings(void);
     void save_settings(void);
+    void set_display(void);
     int piscine_menu(void);
     int stud_or_swim(void);
     bool practice_guard(void);

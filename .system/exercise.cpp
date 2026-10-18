@@ -14,12 +14,12 @@ int exam::change_ex(void)
     // if there is only 1 exercise, we can't change it
     if (list_ex_lvl.size() == 1)
     {
-        std::cout << "You can't change exercise, there is only one exercise in this level" << std::endl;
+        display->message(Msg::OnlyOneExercise);
         return (0);
     }
     clean_all();
     system("clear");
-    std::cout << "  > You have generated a new exercise" << std::endl;
+    display->message(Msg::NewExercise);
     changex = 1;
     delete current_ex;
     start_new_ex();
@@ -31,12 +31,12 @@ bool exam::prepare_current_ex(void)
 {
     if (level == level_max)
     {
-        std::cout << "You have reached the maximum level of this exam." << std::endl;
+        display->message(Msg::MaxLevel);
         return (false);
     }
     if (!file_exists(get_path()))
     {
-        std::cout << "Error: Cannot load exercise, unable to find valid path" << std::endl;
+        display->message(Msg::NoExercisePath);
         return (false);
     }
 

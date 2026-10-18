@@ -3,94 +3,99 @@
 // ==> Shell prompt
 void exam::exam_prompt(void)
 {
-    std::string input;
-
     while (1)
     {
-        char *line = readline("\e[93mexamshell\e[0m> ");
-        if (line == NULL)
-            sigd();
-        input = line;
-        while (input.back() == ' ')
-            input.pop_back();
-        while (input.front() == ' ')
-            input.erase(input.begin());
-        if (input.empty())
-            continue;
-        add_history(input.c_str());
-        if ((input == "remove_grade_time" || input == "new_ex" || input == "force_success" || input == "gradenow") && !setting_dcc)
-            std::cout << " ❌ Cheat commands are currently disabled, use " << LIME << BOLD << "settings" << RESET << " command." << std::endl;
-        else if (input == "finish" || input == "exit" || input == "quit")
+        Action action = display->readCommand();
+        bool cheat = action == Action::RemoveGradeTime || action == Action::NewEx || action == Action::ForceSuccess || action == Action::GradeNow;
+        if (cheat && !setting_dcc)
         {
-            std::cout << "Are you sure you want to" << RED << " exit" << RESET << " the exam?" << std::endl;
-            std::cout << "All your progress will be " << RED << "lost" << RESET << "." << std::endl;
-            std::cout << "Type " << LIME << BOLD << "yes" << RESET << " to confirm." << std::endl;
-            // read input
-            std::string input;
-            std::getline(std::cin, input);
-            if (input == "yes")
+            display->message(Msg::CheatsDisabled);
+            continue;
+        }
+        switch (action)
+        {
+        case Action::Finish:
+            if (display->confirmFinish())
             {
                 if (std::ifstream(".system/exam_token/current_token.txt"))
                     remove(".system/exam_token/current_token.txt");
                 exit(0);
             }
-            else
-                std::cout << " ** Abort ** " << std::endl;
-        }
-        else if (input == "settings")
-        {
+            display->message(Msg::FinishAborted);
+            break;
+        case Action::Settings:
             changex = 1;
             settings_menu();
-            if (setting_esd)
-                info_examshell();
-            else
-                info();
-        }
-        else if (input == "grademe")
-        {
+            show_status();
+            break;
+        case Action::Grade:
             grademe();
-        }
-        else if (input == "status")
-        {
+            break;
+        case Action::Status:
             changex = 1;
-            if (setting_esd)
-                info_examshell();
-            else
-                info();
-        }
-        else if (input == "new_ex")
-        {
+            show_status();
+            break;
+        case Action::NewEx:
             change_ex();
             using_cheatcode++;
-        }
-        else if (input == "force_success")
-        {
+            break;
+        case Action::ForceSuccess:
             using_cheatcode++;
             success_ex(1);
-        }
-        else if (input == "help")
-        {
-            exam_help();
-        }
-        else if (input == "remove_grade_time")
-        {
-            std::cout << "Time between grading is now removed for this exam" << std::endl;
+            break;
+        case Action::Help:
+            display->showHelp(setting_dcc);
+            break;
+        case Action::RemoveGradeTime:
+            display->message(Msg::GradeTimeRemoved);
             waiting_time = false;
             using_cheatcode++;
-        }
-        else if (input == "gradenow")
-        {
+            break;
+        case Action::GradeNow:
             using_cheatcode++;
             grade_request(1);
+            break;
+        case Action::Unknown:
+            display->message(Msg::UnknownCommand);
+            break;
         }
-        else if (input == "")
-            std::cout << REMOVE_LINE;
-        else if (input != "")
-            std::cout << "           **Unknown command**     type " << LIME << "help" << RESET << " for more help" << std::endl;
-        // info();
     }
 }
 // jo je taime
+
+// ==> Fill the status view from the exam state
+ExamView exam::make_view(void)
+{
+    ExamView v;
+    v.real_mode = reelmode;
+    v.level = level;
+    v.level_max = level_max;
+    v.level_per_ex = level_per_ex;
+    v.level_per_ex_save = level_per_ex_save;
+    v.ex_name = current_ex->get_name();
+    v.tries = current_ex->get_assignement();
+    for (std::map<int, exercise>::iterator it = lvl_ex.begin(); it != lvl_ex.end(); it++)
+    {
+        PassedLevel p;
+        p.level = it->second.get_lvl();
+        p.name = it->second.get_name();
+        p.tries = it->second.get_assignement();
+        v.passed.push_back(p);
+    }
+    v.animate = current_ex->get_assignement() == 0 && backup == 0 && !changex;
+    for (std::map<int, exercise>::iterator it = list_ex_lvl.begin(); it != list_ex_lvl.end(); it++)
+        v.candidates.push_back(it->second.get_name());
+    v.end_time = end_time;
+    return (v);
+}
+
+// ==> Status screen; the legacy one marks the exercise as shown so the name roll is not replayed
+void exam::show_status(void)
+{
+    display->showStatus(make_view());
+    if (!setting_esd)
+        backup = 1;
+}
 
 // ==> Starting a new exercise/exam
 bool exam::start_new_ex(void)
@@ -104,10 +109,7 @@ bool exam::start_new_ex(void)
         prepare_current_ex();
         store_data();
     }
-    if (setting_esd)
-        info_examshell();
-    else
-        info();
+    show_status();
     exam_prompt();
     return (true);
 }
