@@ -30,7 +30,7 @@ void exam::settings_menu(void)
         SettingsView s;
         s.dse = setting_dse;
         s.dcc = setting_dcc;
-        s.esd = setting_esd;
+        s.style = setting_style;
         s.anim = setting_anim;
         s.pcd = setting_pcd;
         input = display->settingsMenu(s);
@@ -39,7 +39,7 @@ void exam::settings_menu(void)
         if (input == "2")
             setting_dcc = !setting_dcc;
         if (input == "3")
-            setting_esd = !setting_esd;
+            setting_style = (DisplayStyle)(((int)setting_style + 1) % 3);
         if (input == "4")
             setting_anim = !setting_anim;
         if (input == "5")

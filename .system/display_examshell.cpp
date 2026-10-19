@@ -52,9 +52,17 @@ void ExamshellDisplay::showStatus(const ExamView &v)
     std::cout << "use the \"" << LIME << "grademe" << RESET << "\" command to be graded, or \"" << LIME << "help" << RESET << "\" to get some help." << std::endl;
 }
 
-Display *make_display(bool exact_examshell)
+Display *make_display(DisplayStyle style)
 {
-    if (exact_examshell)
+    switch (style)
+    {
+    case DisplayStyle::Exact:
         return (new ExamshellDisplay());
-    return (new LegacyDisplay());
+    case DisplayStyle::Legacy:
+        return (new LegacyDisplay());
+    case DisplayStyle::Modern:
+    default:
+        // No modern display yet: falls back to the legacy look until it lands
+        return (new LegacyDisplay());
+    }
 }

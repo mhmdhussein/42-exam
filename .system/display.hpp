@@ -52,11 +52,13 @@ struct ExamSummary
     std::string username;
 };
 
+enum class DisplayStyle { Modern = 0, Legacy = 1, Exact = 2 };
+
 struct SettingsView
 {
     bool dse;
     bool dcc;
-    bool esd;
+    DisplayStyle style;
     bool anim;
     bool pcd;
 };
@@ -181,5 +183,5 @@ public:
     void showStatus(const ExamView &v);
 };
 
-// Exact examshell display on: ExamshellDisplay, off: LegacyDisplay
-Display *make_display(bool exact_examshell);
+// Display style setting -> Display subclass
+Display *make_display(DisplayStyle style);

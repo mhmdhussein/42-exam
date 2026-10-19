@@ -93,7 +93,7 @@ ExamView exam::make_view(void)
 void exam::show_status(void)
 {
     display->showStatus(make_view());
-    if (!setting_esd)
+    if (setting_style != DisplayStyle::Exact)
         backup = 1;
 }
 
