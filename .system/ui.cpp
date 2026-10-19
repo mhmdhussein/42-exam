@@ -239,10 +239,11 @@ Spinner::~Spinner(void)
     stop();
 }
 
-void Spinner::start(const std::string &text)
+void Spinner::start(const std::string &text, std::function<std::string(void)> suffix)
 {
     stop();
     text_ = text;
+    suffix_ = suffix;
     animated_ = isatty(STDOUT_FILENO);
     if (!animated_)
     {
@@ -279,7 +280,11 @@ void Spinner::run(void)
         std::string line;
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            line = "\r  " + paint(Color::Current, u ? unicode[f] : ascii[f]) + " " + truncate(text_, term_width() - 5) + "\e[K";
+            std::string text = text_;
+            std::string extra = suffix_ ? suffix_() : "";
+            if (!extra.empty())
+                text += paint(Color::Dim, "  " + extra);
+            line = "\r  " + paint(Color::Current, u ? unicode[f] : ascii[f]) + " " + truncate(text, term_width() - 5) + "\e[K";
         }
         std::cout << line << std::flush;
         std::this_thread::sleep_for(std::chrono::milliseconds(90));

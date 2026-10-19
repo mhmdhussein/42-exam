@@ -116,6 +116,11 @@ the compiler output), `forbidden function: <name>`, or `reference did not compil
 - Write the trace with `printf`, never with `echo '\n'` (that prints a literal `\n`).
 - Stop at the first failing case.
 
+The Modern display reads this format to draw its failure card (command, expected/got, reason); a trace
+in any other format is shown as plain lines. While it runs, the shared runner also writes the current
+step (`compiling`, `test 3/8`) to `.system/grading/progress` for the grading spinner, and on success
+`tests=<number of cases>` to `.system/grading/result`. A custom tester may write both; they are optional.
+
 ## 5. Edge cases to cover
 
 Each tester has at least **8 cases**. **[our choice]** Pick the ones that apply from this checklist.

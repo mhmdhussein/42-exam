@@ -5,7 +5,7 @@ void exam::exam_prompt(void)
 {
     while (1)
     {
-        Action action = display->readCommand();
+        Action action = display->readCommand(end_time);
         bool cheat = action == Action::RemoveGradeTime || action == Action::NewEx || action == Action::ForceSuccess || action == Action::GradeNow;
         if (cheat && !setting_dcc)
         {
@@ -67,6 +67,8 @@ void exam::exam_prompt(void)
 ExamView exam::make_view(void)
 {
     ExamView v;
+    v.student = student;
+    v.exam_number = exam_number;
     v.real_mode = reelmode;
     v.level = level;
     v.level_max = level_max;
@@ -86,6 +88,7 @@ ExamView exam::make_view(void)
     for (std::map<int, exercise>::iterator it = list_ex_lvl.begin(); it != list_ex_lvl.end(); it++)
         v.candidates.push_back(it->second.get_name());
     v.end_time = end_time;
+    v.cooldown_until = waiting_time ? current_ex->time_bef_grade : 0;
     return (v);
 }
 

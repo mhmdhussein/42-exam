@@ -62,7 +62,6 @@ Display *make_display(DisplayStyle style)
         return (new LegacyDisplay());
     case DisplayStyle::Modern:
     default:
-        // No modern display yet: falls back to the legacy look until it lands
-        return (new LegacyDisplay());
+        return (new ModernDisplay());
     }
 }

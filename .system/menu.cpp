@@ -10,9 +10,11 @@ int exam::stud_or_swim(void)
         if (choice == "3")
             practice_mode();
         else if (choice == "4")
-        {
             settings_menu();
-            std::cin.ignore();
+        else if (choice == "q")
+        {
+            system("clear");
+            exit(0);
         }
         else if (choice != "1" && choice != "2" )
             choice = "-1";
@@ -40,6 +42,8 @@ void exam::settings_menu(void)
             setting_dcc = !setting_dcc;
         if (input == "3")
             setting_style = (DisplayStyle)(((int)setting_style + 1) % 3);
+        if (input == "-3")
+            setting_style = (DisplayStyle)(((int)setting_style + 2) % 3);
         if (input == "4")
             setting_anim = !setting_anim;
         if (input == "5")

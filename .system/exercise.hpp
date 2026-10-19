@@ -23,6 +23,7 @@ class exercise
         void set_time_bef_grade(time_t time_bef_grade);
         int get_lvl(void);
         time_t time_bef_grade;
+        time_t passed_at; // 0 = not passed, or unknown
     private :
         int assignement;
         std::string name;

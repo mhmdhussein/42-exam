@@ -18,6 +18,10 @@ void exam::store_data()
     file << level_per_ex << std::endl;
     file << level_per_ex_save << std::endl;
     file << using_cheatcode << std::endl;
+    // passed levels, one per line: level name failed_tries passed_at (missing in older tokens)
+    file << lvl_ex.size() << std::endl;
+    for (std::map<int, exercise>::iterator it = lvl_ex.begin(); it != lvl_ex.end(); it++)
+        file << it->second.get_lvl() << " " << it->second.get_name() << " " << it->second.get_assignement() << " " << it->second.passed_at << std::endl;
 
     file.close();
 }
@@ -45,6 +49,21 @@ void exam::restore_data(void)
         file >> backup.level_per_ex;
         file >> backup.level_per_ex_save;
         file >> backup.using_cheatcode;
+        size_t passed_count;
+        if (file >> passed_count)
+        {
+            for (size_t i = 0; i < passed_count; i++)
+            {
+                int lvl, tries;
+                std::string ex_name;
+                time_t passed_at;
+                if (!(file >> lvl >> ex_name >> tries >> passed_at))
+                    break;
+                exercise ex(lvl, ex_name, tries, 0);
+                ex.passed_at = passed_at;
+                backup.lvl_ex.insert(std::pair<int, exercise>(lvl, ex));
+            }
+        }
 
         backup.current_ex = new exercise(backup.get_lvl(), name, std::stoi(assign), std::stoi(time_bef_grade));
         backup.backup = 1;
@@ -67,7 +86,6 @@ void exam::restore_data(void)
         std::string answer = display->restorePrompt(r);
         if (answer == "1")
         {
-            std::cin.ignore();
             display->message(Msg::RestoringToken);
             this->start_time = backup.get_start_time();
             this->end_time = backup.get_end_time();
@@ -80,11 +98,11 @@ void exam::restore_data(void)
             this->level_per_ex = backup.level_per_ex;
             this->level_per_ex_save = backup.level_per_ex_save;
             this->using_cheatcode = backup.using_cheatcode;
+            this->lvl_ex = backup.lvl_ex;
         }
         else
         {
             display->message(Msg::TokenDeleted);
-            std::cin.ignore();
             // delete file and return to menu
             system("rm .system/exam_token/current_token.txt");
             system("clear");

@@ -5,7 +5,7 @@ LDLIBS   = -lreadline
 
 SRCS = .system/exercise.cpp .system/main.cpp .system/menu.cpp .system/exam.cpp \
        .system/utils.cpp .system/grade_request.cpp .system/data_persistence.cpp \
-       .system/practice.cpp .system/display_legacy.cpp .system/display_examshell.cpp \
+       .system/practice.cpp .system/display_legacy.cpp .system/display_examshell.cpp .system/display_modern.cpp \
        .system/term.cpp .system/ui.cpp
 OBJDIR = .system/obj
 OBJS = $(SRCS:.system/%.cpp=$(OBJDIR)/%.o)

@@ -4,6 +4,8 @@
 # Rules: docs/TESTER_GUIDE.md. Runs from the repo root.
 #   bash .system/run_tests.sh <name>
 # On failure: writes ./traceback and exits 1. On success: touches .system/grading/passed.
+# While it runs, .system/grading/progress holds the step (compiling, test 3/8) for the
+# examshell spinner; on success .system/grading/result holds tests=<number of cases>.
 
 NAME=$1
 ROOT=$(pwd)
@@ -12,7 +14,8 @@ RENDU=$ROOT/rendu/$NAME
 source "$ROOT/.system/trace.sh"
 
 cd "$GRADING" || exit 1
-rm -f passed "$TRACE_FILE"
+rm -f passed result progress "$TRACE_FILE"
+progress() { printf '%s\n' "$1" > "$GRADING/progress"; }
 
 # ---- config ----------------------------------------------------------------
 TIMEOUT=10 CFLAGS_EXTRA="" LDFLAGS_EXTRA="" BUFFER_SIZES="" FILES=""
@@ -234,6 +237,7 @@ run_cases() {
     local exp_out exp_err exp_status got_out got_err
     for line in "${CASES[@]}"; do
         i=$((i + 1))
+        progress "test $i/$TOTAL"
         input=/dev/null
         if [[ $line == stdin:* ]]; then
             eval "set -- ${line#stdin:}"
@@ -285,6 +289,7 @@ run_cases() {
 for bs in ${BUFFER_SIZES:-NONE}; do
     flag=""
     [ "$bs" != NONE ] && flag="-D BUFFER_SIZE=$bs" || bs=""
+    progress compiling
     out=$(build build_ref "$flag" "${REF_SOURCES[@]}") || fail_build "reference did not compile" "$out"
     out=$(build build_stud "$flag" "${STUD_SOURCES[@]}") || fail_build "compile error${bs:+ (BUFFER_SIZE=$bs)}" "$out"
     [ -n "$checked" ] || { check_allowed; checked=1; }
@@ -292,4 +297,6 @@ for bs in ${BUFFER_SIZES:-NONE}; do
 done
 
 cleanup
+rm -f progress
+printf 'tests=%s\n' "$TOTAL" > result
 touch passed

@@ -1,6 +1,4 @@
 #include "exam.hpp"
-#include "term.hpp"
-#include "ui.hpp"
 #include <algorithm>
 
 static std::string to_lower(std::string s)
@@ -162,125 +160,14 @@ std::vector<practice_entry> practice_filter(const std::vector<practice_entry> &i
     return (result);
 }
 
-static std::string entry_row(const practice_entry &entry)
-{
-    std::ostringstream row;
-    row << std::left << std::setw(24) << entry.name << " "
-        << std::setw(7) << (entry.part == "STUD_PART" ? "STUD" : "PISCINE")
-        << " exam_0" << entry.exam << "  lvl " << entry.lvl;
-    if (entry.passed)
-        row << "  " << ui::paint(ui::Color::Success, ui::sym(ui::Sym::Check));
-    return (row.str());
-}
 
 // ==> Position of a filtered entry inside the full index
-static int index_of(const std::vector<practice_entry> &index, const practice_entry &entry)
+int practice_position(const std::vector<practice_entry> &index, const practice_entry &entry)
 {
     for (size_t i = 0; i < index.size(); i++)
         if (index[i].name == entry.name && index[i].part == entry.part && index[i].exam == entry.exam && index[i].lvl == entry.lvl)
             return (i);
     return (-1);
-}
-
-// ==> Line-mode picker for pipes / non-terminals
-int exam::practice_picker_lines(std::vector<practice_entry> &index, std::string &query)
-{
-    while (1)
-    {
-        bool bad_filter;
-        std::vector<practice_entry> found = practice_filter(index, query, bad_filter);
-        std::cout << std::endl;
-        for (size_t i = 0; i < found.size(); i++)
-            std::cout << std::right << std::setw(4) << i + 1 << "  " << entry_row(found[i]) << std::endl;
-        std::cout << "  " << found.size() << " / " << index.size() << " exercises";
-        if (bad_filter)
-            std::cout << RED << "   unknown filter" << RESET;
-        std::cout << std::endl;
-        std::cout << "Number to select, new query to filter, empty to go back: ";
-        std::string input;
-        if (!std::getline(std::cin, input))
-            sigd();
-        if (input.empty())
-            return (-1);
-        if (is_number(input) && atoi(input.c_str()) >= 1 && atoi(input.c_str()) <= (int)found.size())
-            return (index_of(index, found[atoi(input.c_str()) - 1]));
-        query = input;
-    }
-}
-
-// ==> Live search bar, returns the index of the selected exercise or -1 on Esc
-int exam::practice_picker(std::vector<practice_entry> &index, std::string &query)
-{
-    if (!term_raw_enter())
-        return (practice_picker_lines(index, query));
-
-    int selected = 0;
-    int offset = 0;
-    while (1)
-    {
-        bool bad_filter;
-        std::vector<practice_entry> found = practice_filter(index, query, bad_filter);
-        if (selected >= (int)found.size())
-            selected = found.size() ? found.size() - 1 : 0;
-
-        int rows = std::max(term_height() - 3, 1);
-        if (selected < offset)
-            offset = selected;
-        if (selected >= offset + rows)
-            offset = selected - rows + 1;
-
-        std::string frame = "\e[H\e[J";
-        frame += std::string(WHITE) + BOLD + "Search: " + RESET + query + "█\r\n";
-        for (int i = offset; i < (int)found.size() && i < offset + rows; i++)
-        {
-            if (i == selected)
-                frame += std::string(YELLOW) + BOLD + "> " + RESET + entry_row(found[i]) + "\r\n";
-            else
-                frame += "  " + entry_row(found[i]) + "\r\n";
-        }
-        std::ostringstream footer;
-        footer << "  " << found.size() << " / " << index.size() << " exercises";
-        if (bad_filter)
-            footer << RED << "   unknown filter" << RESET;
-        footer << "        ↑↓ move · Enter select · Esc back";
-        frame += footer.str();
-        write(STDOUT_FILENO, frame.c_str(), frame.size());
-
-        char c;
-        Key key = term_read_key(c);
-        if (key == Key::Eof)
-        {
-            term_raw_restore();
-            sigd();
-        }
-        else if (key == Key::Esc)
-        {
-            term_raw_restore();
-            return (-1);
-        }
-        else if (key == Key::Up && selected > 0)
-            selected--;
-        else if (key == Key::Down && selected + 1 < (int)found.size())
-            selected++;
-        else if (key == Key::Enter)
-        {
-            if (found.empty())
-                continue;
-            term_raw_restore();
-            std::cout << std::endl;
-            return (index_of(index, found[selected]));
-        }
-        else if (key == Key::Backspace && !query.empty())
-        {
-            query.erase(query.size() - 1);
-            selected = 0;
-        }
-        else if (key == Key::Char)
-        {
-            query += c;
-            selected = 0;
-        }
-    }
 }
 
 // ==> Saved exam check: true to go on with practice, false to go back
@@ -290,39 +177,30 @@ bool exam::practice_guard(void)
         return (true);
 
     std::ifstream file(".system/exam_token/current_token.txt");
-    std::string skip, saved_exam, saved_student, saved_name;
-    file >> skip >> skip >> saved_exam >> saved_student >> skip >> skip >> saved_name;
+    std::string skip, saved_exam, saved_student, saved_end, saved_name;
+    file >> skip >> saved_end >> saved_exam >> saved_student >> skip >> skip >> saved_name;
     file.close();
 
-    std::string answer = "";
-    while (answer != "1" && answer != "0")
-    {
-        system("clear");
-        std::cout << std::endl
-                  << RED << BOLD << "       !!" << BOLD << WHITE << " SAVED EXAM " << RED << BOLD << "!!" << RESET << std::endl
-                  << std::endl;
-        std::cout << WHITE << BOLD << "        " << (saved_student == "1" ? "EXAMRANK " : "EXAMWEEK ") << LIME << "0" << saved_exam << RESET << std::endl;
-        std::cout << WHITE << BOLD << "    CURRENT EX: " << LIME << saved_name << RESET << std::endl
-                  << std::endl;
-        std::cout << "    Practice will clear the files of this exam session." << std::endl
-                  << std::endl;
-        std::cout << WHITE << BOLD << "            1" << RESET << std::endl;
-        std::cout << WHITE << BOLD << "    |" << RED << BOLD << "  CLEAR  EXAM   " << WHITE << BOLD << "|" << RESET << BOLD << std::endl
-                  << "     \\ ------------ /" << std::endl
-                  << std::endl;
-        std::cout << WHITE << BOLD << "            0" << RESET << std::endl;
-        std::cout << WHITE << BOLD << "    |" << LIME << BOLD << "  CANCEL, BACK  " << WHITE << BOLD << "|" << RESET << BOLD << std::endl
-                  << "     \\ ------------ /" << RESET << std::endl
-                  << std::endl
-                  << "            ";
-        if (!std::getline(std::cin, answer))
-            sigd();
-    }
-    if (answer == "0")
+    RestoreView saved;
+    saved.student = saved_student == "1";
+    saved.exam_number = atoi(saved_exam.c_str());
+    saved.ex_name = saved_name;
+    saved.end_time = atol(saved_end.c_str());
+    if (!display->practiceGuard(saved))
         return (false);
     remove(".system/exam_token/current_token.txt");
-    std::cout << "   Exam token deleted" << std::endl;
+    display->message(Msg::PracticeTokenDeleted);
     return (true);
+}
+
+PracticeView exam::practice_view(const practice_entry &entry)
+{
+    PracticeView v;
+    v.entry = entry;
+    v.path = get_path();
+    v.tries = current_ex->get_assignement();
+    v.cooldown_until = setting_pcd ? current_ex->time_bef_grade : 0;
+    return (v);
 }
 
 // ==> Copy the subject and tester of an exercise, keeping rendu/
@@ -335,24 +213,7 @@ void exam::practice_start(practice_entry &entry)
     current_ex = new exercise(level, entry.name);
     system("rm -rf subjects .system/grading");
     copy_ex_files();
-
-    system("clear");
-    std::cout << "==================================================================" << std::endl;
-    std::cout << YELLOW << BOLD << "PRACTICE" << RESET << " (no timer, no grade)" << std::endl
-              << std::endl;
-    practice_status(entry);
-    std::cout << "==================================================================" << std::endl;
-    std::cout << "Use the \"" << LIME << "grademe" << RESET << "\" command to be graded, or \"" << LIME << "help" << RESET << "\" to get some help." << std::endl;
-}
-
-void exam::practice_status(practice_entry &entry)
-{
-    std::cout << "Assignment: " << LIME << entry.name << RESET << " (" << get_path() << ")" << std::endl;
-    std::cout << "Tries: " << YELLOW << current_ex->get_assignement() << RESET << std::endl;
-    if (setting_pcd && current_ex->time_bef_grade > time(NULL))
-        std::cout << "Cooldown: " << YELLOW << current_ex->time_bef_grade - time(NULL) << " seconds" << RESET << std::endl;
-    std::cout << "Subject location:  " << LIME << current_path() << "/subjects/subject.en.txt" << RESET << std::endl;
-    std::cout << "Exercise location: " << RED << current_path() << "/rendu/" << entry.name << "/" << RESET << std::endl;
+    display->practiceStart(practice_view(entry));
 }
 
 // ==> Another random exercise of the same exam and level, or cur if there is none
@@ -364,7 +225,7 @@ int exam::practice_random(std::vector<practice_entry> &index, int cur)
             candidates.push_back(i);
     if (candidates.empty())
     {
-        std::cout << "There is only one exercise in this level." << std::endl;
+        display->message(Msg::PracticeOnlyOne);
         return (cur);
     }
     srand(time(NULL));
@@ -374,59 +235,33 @@ int exam::practice_random(std::vector<practice_entry> &index, int cur)
 // ==> Practice prompt, returns the next exercise to start or -1 to leave practice
 int exam::practice_prompt(std::vector<practice_entry> &index, int cur, std::string &query)
 {
-    std::string input;
-
     while (1)
     {
-        char *line = readline("\e[93mpractice\e[0m> ");
-        if (line == NULL)
-            sigd();
-        input = line;
-        free(line);
-        while (!input.empty() && input.back() == ' ')
-            input.pop_back();
-        while (!input.empty() && input.front() == ' ')
-            input.erase(input.begin());
-        if (input.empty())
-            continue;
-        add_history(input.c_str());
-        if (input == "exit" || input == "quit")
+        PracticeAction action = display->practiceCommand(practice_view(index[cur]));
+        if (action == PracticeAction::Exit)
             return (-1);
-        else if (input == "help")
+        else if (action == PracticeAction::Help)
+            display->practiceHelp();
+        else if (action == PracticeAction::Status)
+            display->practiceStatus(practice_view(index[cur]), false);
+        else if (action == PracticeAction::Pick)
         {
-            std::cout << "Commands:" << std::endl;
-            std::cout << LIME << "    grademe:" << RESET << " grade your exercise" << std::endl;
-            std::cout << LIME << "    pick:" << RESET << " search another exercise" << std::endl;
-            std::cout << LIME << "    random:" << RESET << " random exercise from the same exam and level" << std::endl;
-            std::cout << LIME << "    status:" << RESET << " display the current exercise" << std::endl;
-            std::cout << LIME << "    exit:" << RESET << " back to the main menu" << std::endl;
-        }
-        else if (input == "status")
-            practice_status(index[cur]);
-        else if (input == "pick")
-        {
-            int next = practice_picker(index, query);
+            int next = display->practicePicker(index, query);
             if (next >= 0)
                 return (next);
-            system("clear");
-            practice_status(index[cur]);
+            display->practiceStatus(practice_view(index[cur]), true);
         }
-        else if (input == "random")
+        else if (action == PracticeAction::Random)
         {
             int next = practice_random(index, cur);
             if (next != cur)
                 return (next);
         }
-        else if (input == "grademe")
+        else if (action == PracticeAction::Grade)
         {
             if (setting_pcd && current_ex->time_bef_grade > time(NULL))
             {
-                std::cout << RED << "ERROR: " << RESET << "You must wait at least " << YELLOW << BOLD;
-                if ((((current_ex->time_bef_grade - time(NULL))) / 60) >= 1)
-                    std::cout << (current_ex->time_bef_grade - time(NULL)) / 60 << " minutes" << RESET << " and " << YELLOW << BOLD << (current_ex->time_bef_grade - time(NULL)) % 60 << " seconds" << RESET;
-                else
-                    std::cout << (current_ex->time_bef_grade - time(NULL)) << " seconds" << RESET;
-                std::cout << " until next grading request (setting 5)." << std::endl;
+                display->practiceCooldown(current_ex->time_bef_grade - time(NULL));
                 continue;
             }
             int result = run_tester();
@@ -434,7 +269,12 @@ int exam::practice_prompt(std::vector<practice_entry> &index, int cur, std::stri
             {
                 current_ex->up_assignement();
                 if (setting_pcd)
+                {
                     current_ex->set_time_bef_grade(time(NULL) + current_ex->grade_time() * 60);
+                    if (current_ex->time_bef_grade > time(NULL))
+                        last_result.retry_at = current_ex->time_bef_grade;
+                }
+                display->showResult(last_result);
             }
             else if (result == 1)
             {
@@ -445,35 +285,19 @@ int exam::practice_prompt(std::vector<practice_entry> &index, int cur, std::stri
                 for (size_t i = 0; i < index.size(); i++)
                     if (index[i].name == index[cur].name)
                         index[i].passed = true;
-                std::cout << std::endl
-                          << LIME << ">>>>>>>>>> SUCCESS <<<<<<<<<<" << RESET << std::endl
-                          << std::endl;
-                std::string choice = "";
-                while (1)
-                {
-                    std::cout << "    " << LIME << "1" << RESET << "  retry the same exercise" << std::endl;
-                    std::cout << "    " << LIME << "2" << RESET << "  pick another" << std::endl;
-                    std::cout << "    " << LIME << "3" << RESET << "  random from the same level" << std::endl;
-                    std::cout << "    " << LIME << "0" << RESET << "  exit to the main menu" << std::endl;
-                    std::cout << "Your choice: ";
-                    if (!std::getline(std::cin, choice))
-                        sigd();
-                    if (choice == "0")
-                        return (-1);
-                    if (choice == "1")
-                        return (cur);
-                    if (choice == "3")
-                        return (practice_random(index, cur));
-                    if (choice == "2")
-                    {
-                        int next = practice_picker(index, query);
-                        return (next >= 0 ? next : cur);
-                    }
-                }
+                std::string choice = display->practicePassed(last_result);
+                if (choice == "0")
+                    return (-1);
+                if (choice == "1")
+                    return (cur);
+                if (choice == "3")
+                    return (practice_random(index, cur));
+                int next = display->practicePicker(index, query);
+                return (next >= 0 ? next : cur);
             }
         }
         else
-            std::cout << "           **Unknown command**     type " << LIME << "help" << RESET << " for more help" << std::endl;
+            display->message(Msg::UnknownCommand);
     }
 }
 
@@ -486,12 +310,12 @@ void exam::practice_mode(void)
     std::vector<practice_entry> index = practice_index();
     if (index.empty())
     {
-        std::cout << "Error: no exercise found in .subjects/" << std::endl;
+        display->message(Msg::PracticeNoExercises);
         return;
     }
     std::string query = "";
     current_ex = NULL;
-    int cur = practice_picker(index, query);
+    int cur = display->practicePicker(index, query);
     while (cur >= 0)
     {
         practice_start(index[cur]);
