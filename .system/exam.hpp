@@ -75,6 +75,7 @@ public:
     bool prepare_current_ex(void);
     void copy_ex_files(void);
     int run_tester(void);
+    GradeResult last_result; // filled by run_tester
     void practice_mode(void);
     bool clean_all(void);
     void restore_data(void);
@@ -96,6 +97,7 @@ private:
     void settings_menu(void);
     void grade_request(bool i);
     void end_exam(void);
+    int grade_at(int passed);
     void set_max_lvl(void);
     int stud_menu(void);
     void load_settings(void);

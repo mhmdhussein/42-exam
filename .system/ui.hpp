@@ -5,6 +5,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <functional>
 
 // ==> Building blocks for the modern screens. Colour and Unicode follow term_color() / term_unicode().
 namespace ui
@@ -72,7 +73,8 @@ class Spinner
 public:
     Spinner(void);
     ~Spinner(void);
-    void start(const std::string &text);
+    // suffix, when given, is called each frame and its result shown dimmed after the text
+    void start(const std::string &text, std::function<std::string(void)> suffix = nullptr);
     void set_text(const std::string &text);
     void stop(void); // clears the line
 
@@ -83,6 +85,7 @@ private:
     std::mutex mutex_;
     std::atomic<bool> running_;
     std::string text_;
+    std::function<std::string(void)> suffix_;
     bool animated_;
 };
 

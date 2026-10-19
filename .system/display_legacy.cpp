@@ -1,4 +1,5 @@
 #include "exam.hpp"
+#include <limits>
 
 // ==> First menu display
 std::string LegacyDisplay::startMenu(bool invalid)
@@ -159,6 +160,9 @@ std::string LegacyDisplay::settingsMenu(const SettingsView &s)
     print_toggle(s.pcd);
     if (!(std::cin >> input))
         sigd();
+    // leaving: drop the rest of the line so the next getline doesn't read it
+    if (input == "0")
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     return (input);
 }
 
@@ -196,6 +200,7 @@ std::string LegacyDisplay::restorePrompt(const RestoreView &r)
         std::cout << REMOVE_LINE << "            ";
         std::cin >> answer;
     }
+    std::cin.ignore();
     return (answer);
 }
 
@@ -251,6 +256,12 @@ void LegacyDisplay::showExplanation(void)
 // ==> display connexion animation
 void LegacyDisplay::connexion(const std::string &username)
 {
+    play_login(username);
+}
+
+// ==> Fake examshell login, shared by the displays
+void play_login(const std::string &username)
+{
     system("clear");
     std::cout << RESET;
     std::string examsystem = "examshell";
@@ -292,7 +303,7 @@ void LegacyDisplay::connexion(const std::string &username)
               << std::endl;
 }
 
-void LegacyDisplay::showIntro(const std::string &username, int exam_number, int level, int time_max)
+void LegacyDisplay::showIntro(const std::string &username, bool, int exam_number, int level, int time_max)
 {
     std::string enter;
     std::cout << "You're connected " << LIME << username << RESET << "!" << std::endl;
@@ -409,21 +420,26 @@ void LegacyDisplay::showHelp(bool cheats)
     }
 }
 
+Action LegacyDisplay::readCommand(time_t)
+{
+    return (read_action("\e[93mexamshell\e[0m> "));
+}
+
 // ==> Shell prompt: read lines until one is not blank
-Action LegacyDisplay::readCommand(void)
+Action read_action(const std::string &prompt)
 {
     std::string input;
 
     while (1)
     {
-        char *line = readline("\e[93mexamshell\e[0m> ");
+        char *line = readline(prompt.c_str());
         if (line == NULL)
             sigd();
         input = line;
         free(line);
-        while (input.back() == ' ')
+        while (!input.empty() && input.back() == ' ')
             input.pop_back();
-        while (input.front() == ' ')
+        while (!input.empty() && input.front() == ' ')
             input.erase(input.begin());
         if (!input.empty())
             break;
@@ -520,6 +536,14 @@ void LegacyDisplay::gradingStarted(void)
         std::cout << "waiting..." << std::endl;
         usleep(random);
     }
+}
+
+void LegacyDisplay::testerStarted(const std::string &)
+{
+}
+
+void LegacyDisplay::testerFinished(void)
+{
 }
 
 void LegacyDisplay::showResult(const GradeResult &r)

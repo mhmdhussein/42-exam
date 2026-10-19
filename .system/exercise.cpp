@@ -5,6 +5,7 @@ exercise::exercise(void) {
     assignement = 0;
     level_ex = 0;
     time_bef_grade = time(NULL);
+    passed_at = 0;
 }
 
 // ==> Function to change exercise
@@ -123,6 +124,7 @@ exercise::exercise(int level, std::string ex_name) {
     level_ex = level;
     assignement = 0;
     time_bef_grade = time(NULL);
+    passed_at = 0;
 }
 
 exercise::exercise(int level, std::string ex_name, int assign, time_t tbg) {
@@ -130,6 +132,7 @@ exercise::exercise(int level, std::string ex_name, int assign, time_t tbg) {
     level_ex = level;
     assignement = assign;
     time_bef_grade = tbg;
+    passed_at = 0;
 }
 
 exercise::exercise(exercise const & src) {
@@ -137,6 +140,7 @@ exercise::exercise(exercise const & src) {
     level_ex = src.level_ex;
     assignement = src.assignement;
     time_bef_grade = src.time_bef_grade;
+    passed_at = src.passed_at;
 }
 
 exercise::~exercise(void) {
@@ -147,6 +151,7 @@ exercise&  exercise::operator=(exercise const & src) {
     level_ex = src.level_ex;
     assignement = src.assignement;
     time_bef_grade = src.time_bef_grade;
+    passed_at = src.passed_at;
     return (*this);
 }
 

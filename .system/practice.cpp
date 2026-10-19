@@ -434,7 +434,12 @@ int exam::practice_prompt(std::vector<practice_entry> &index, int cur, std::stri
             {
                 current_ex->up_assignement();
                 if (setting_pcd)
+                {
                     current_ex->set_time_bef_grade(time(NULL) + current_ex->grade_time() * 60);
+                    if (current_ex->time_bef_grade > time(NULL))
+                        last_result.retry_at = current_ex->time_bef_grade;
+                }
+                display->showResult(last_result);
             }
             else if (result == 1)
             {

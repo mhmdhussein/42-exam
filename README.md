@@ -71,6 +71,14 @@ Choose Piscine or Student part, pick an exam and confirm. Your subject goes in
 `subjects/subject.en.txt`. Write your solution in `rendu/<exercise>/`, then type `grademe` at the
 `examshell>` prompt. If grading fails, the trace is saved in `traces/`.
 
+In the default **Modern** style, the menus take ↑/↓ (or `j`/`k`) and Enter, Esc or `q` to go back
+(typing an option's number still works, and without a terminal you type the number as before). The
+prompt shows the time left (`examshell [2:41] ❯`), yellow under 30 minutes and red under 10.
+`status` shows your level, points, time left and when you can grade again. Grading shows a spinner,
+then a card: on failure, the first failing test with its expected and actual output; on success, your
+new level and points. When the exam ends you get a summary with tries and time spent per level.
+Set `NO_COLOR=1` for no colours, or `EXAMSHELL_ASCII=1` for plain ASCII boxes and symbols.
+
 ### Commands
 
 | Command | |
@@ -96,7 +104,7 @@ Saved in `.system/exam_token/.settings`.
 
 1. Enable exercises you already passed
 2. Enable cheat commands
-3. Display style: **Modern** (default), **Legacy** or **Exact examshell** (status screens worded like the real 42 examshell). Press 3 to cycle; it applies as soon as you leave the menu, also in the middle of an exam. Settings files from older versions load as Exact examshell if that switch was on, otherwise Modern
+3. Display style: **Modern** (default: boxes, arrow-key menus, result cards), **Legacy** (the original look) or **Exact examshell** (the original look, with status screens worded like the real 42 examshell). Press 3 to cycle (in Modern: ←/→ on the row); it applies as soon as you leave the menu, also in the middle of an exam. Settings files from older versions load as Exact examshell if that switch was on, otherwise Modern
 4. Login animation: show the fake examshell login when an exam starts
 5. Cooldown in Practice mode (default off): after a failed `grademe` in Practice, wait like in an exam; the wait grows with each failure and resets when you switch exercise
 

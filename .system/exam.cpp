@@ -119,7 +119,7 @@ void exam::ask_param(void)
     if (setting_anim)
         display->connexion(username);
     set_max_time();
-    display->showIntro(username, exam_number, level, time_max);
+    display->showIntro(username, student, exam_number, level, time_max);
     // ====================
 
     // TIME SETUP
