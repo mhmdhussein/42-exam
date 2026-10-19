@@ -128,7 +128,9 @@ When the input is not a terminal, the picker falls back to a numbered list.
 
 At the `practice>` prompt: `grademe`, `pick` (search again), `random` (another exercise of the same
 exam and level), `status`, `help` and `exit` (back to the menu). Switching exercise keeps `rendu/`.
-After a pass, choose `1` retry, `2` pick another, `3` random from the same level or `0` exit to the menu.
+After a pass, choose `1` retry, `2` pick another, `3` random from the same level or `0` exit to the menu
+(in the Modern style this is an arrow-key menu under the pass card, and the prompt shows the exercise:
+`practice [rev_print] ❯`).
 Passes are appended to `success/practice_ex` (`<name> <PART>/exam_0X/<level> <timestamp>`);
 `success/success_ex` is not touched, so practice does not hide exercises from real exams.
 

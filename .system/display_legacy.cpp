@@ -1,4 +1,5 @@
 #include "exam.hpp"
+#include "term.hpp"
 #include <limits>
 
 // ==> First menu display
@@ -426,7 +427,7 @@ Action LegacyDisplay::readCommand(time_t)
 }
 
 // ==> Shell prompt: read lines until one is not blank
-Action read_action(const std::string &prompt)
+std::string read_command(const std::string &prompt)
 {
     std::string input;
 
@@ -445,6 +446,30 @@ Action read_action(const std::string &prompt)
             break;
     }
     add_history(input.c_str());
+    return (input);
+}
+
+PracticeAction read_practice_action(const std::string &prompt)
+{
+    std::string input = read_command(prompt);
+    if (input == "exit" || input == "quit")
+        return (PracticeAction::Exit);
+    if (input == "help")
+        return (PracticeAction::Help);
+    if (input == "status")
+        return (PracticeAction::Status);
+    if (input == "pick")
+        return (PracticeAction::Pick);
+    if (input == "random")
+        return (PracticeAction::Random);
+    if (input == "grademe")
+        return (PracticeAction::Grade);
+    return (PracticeAction::Unknown);
+}
+
+Action read_action(const std::string &prompt)
+{
+    std::string input = read_command(prompt);
     if (input == "grademe")
         return (Action::Grade);
     if (input == "status")
@@ -626,10 +651,232 @@ void LegacyDisplay::message(Msg m)
     case Msg::SettingsSaved:
         std::cout << REMOVE_LINE << RESET << WHITE << BOLD << "Save settings..." << std::endl;
         break;
+    case Msg::PracticeTokenDeleted:
+        std::cout << "   Exam token deleted" << std::endl;
+        break;
+    case Msg::PracticeNoExercises:
+        std::cout << "Error: no exercise found in .subjects/" << std::endl;
+        break;
+    case Msg::PracticeOnlyOne:
+        std::cout << "There is only one exercise in this level." << std::endl;
+        break;
     }
 }
 
 void LegacyDisplay::error(const std::string &text)
 {
     std::cout << text << std::endl;
+}
+
+// ==> Practice mode
+
+static std::string entry_row(const practice_entry &entry)
+{
+    std::ostringstream row;
+    row << std::left << std::setw(24) << entry.name << " "
+        << std::setw(7) << (entry.part == "STUD_PART" ? "STUD" : "PISCINE")
+        << " exam_0" << entry.exam << "  lvl " << entry.lvl;
+    if (entry.passed)
+        row << "  " << ui::paint(ui::Color::Success, ui::sym(ui::Sym::Check));
+    return (row.str());
+}
+
+// ==> Saved exam found when entering Practice: true to clear it, false to go back
+bool LegacyDisplay::practiceGuard(const RestoreView &saved)
+{
+    std::string answer = "";
+    while (answer != "1" && answer != "0")
+    {
+        system("clear");
+        std::cout << std::endl
+                  << RED << BOLD << "       !!" << BOLD << WHITE << " SAVED EXAM " << RED << BOLD << "!!" << RESET << std::endl
+                  << std::endl;
+        std::cout << WHITE << BOLD << "        " << (saved.student ? "EXAMRANK " : "EXAMWEEK ") << LIME << "0" << saved.exam_number << RESET << std::endl;
+        std::cout << WHITE << BOLD << "    CURRENT EX: " << LIME << saved.ex_name << RESET << std::endl
+                  << std::endl;
+        std::cout << "    Practice will clear the files of this exam session." << std::endl
+                  << std::endl;
+        std::cout << WHITE << BOLD << "            1" << RESET << std::endl;
+        std::cout << WHITE << BOLD << "    |" << RED << BOLD << "  CLEAR  EXAM   " << WHITE << BOLD << "|" << RESET << BOLD << std::endl
+                  << "     \\ ------------ /" << std::endl
+                  << std::endl;
+        std::cout << WHITE << BOLD << "            0" << RESET << std::endl;
+        std::cout << WHITE << BOLD << "    |" << LIME << BOLD << "  CANCEL, BACK  " << WHITE << BOLD << "|" << RESET << BOLD << std::endl
+                  << "     \\ ------------ /" << RESET << std::endl
+                  << std::endl
+                  << "            ";
+        if (!std::getline(std::cin, answer))
+            sigd();
+    }
+    return (answer == "1");
+}
+
+// ==> Line-mode picker for pipes / non-terminals
+int LegacyDisplay::practicePickerLines(const std::vector<practice_entry> &index, std::string &query)
+{
+    while (1)
+    {
+        bool bad_filter;
+        std::vector<practice_entry> found = practice_filter(index, query, bad_filter);
+        std::cout << std::endl;
+        for (size_t i = 0; i < found.size(); i++)
+            std::cout << std::right << std::setw(4) << i + 1 << "  " << entry_row(found[i]) << std::endl;
+        std::cout << "  " << found.size() << " / " << index.size() << " exercises";
+        if (bad_filter)
+            std::cout << RED << "   unknown filter" << RESET;
+        std::cout << std::endl;
+        std::cout << "Number to select, new query to filter, empty to go back: ";
+        std::string input;
+        if (!std::getline(std::cin, input))
+            sigd();
+        if (input.empty())
+            return (-1);
+        int n = atoi(input.c_str());
+        if (input.find_first_not_of("0123456789") == std::string::npos && n >= 1 && n <= (int)found.size())
+            return (practice_position(index, found[n - 1]));
+        query = input;
+    }
+}
+
+// ==> Live search bar, returns the position of the selected exercise or -1 on Esc
+int LegacyDisplay::practicePicker(const std::vector<practice_entry> &index, std::string &query)
+{
+    if (!term_raw_enter())
+        return (practicePickerLines(index, query));
+
+    int selected = 0;
+    int offset = 0;
+    while (1)
+    {
+        bool bad_filter;
+        std::vector<practice_entry> found = practice_filter(index, query, bad_filter);
+        if (selected >= (int)found.size())
+            selected = found.size() ? found.size() - 1 : 0;
+
+        int rows = std::max(term_height() - 3, 1);
+        if (selected < offset)
+            offset = selected;
+        if (selected >= offset + rows)
+            offset = selected - rows + 1;
+
+        std::string frame = "\e[H\e[J";
+        frame += std::string(WHITE) + BOLD + "Search: " + RESET + query + "█\r\n";
+        for (int i = offset; i < (int)found.size() && i < offset + rows; i++)
+        {
+            if (i == selected)
+                frame += std::string(YELLOW) + BOLD + "> " + RESET + entry_row(found[i]) + "\r\n";
+            else
+                frame += "  " + entry_row(found[i]) + "\r\n";
+        }
+        std::ostringstream footer;
+        footer << "  " << found.size() << " / " << index.size() << " exercises";
+        if (bad_filter)
+            footer << RED << "   unknown filter" << RESET;
+        footer << "        ↑↓ move · Enter select · Esc back";
+        frame += footer.str();
+        write(STDOUT_FILENO, frame.c_str(), frame.size());
+
+        char c;
+        Key key = term_read_key(c);
+        if (key == Key::Eof)
+        {
+            term_raw_restore();
+            sigd();
+        }
+        else if (key == Key::Esc)
+        {
+            term_raw_restore();
+            return (-1);
+        }
+        else if (key == Key::Up && selected > 0)
+            selected--;
+        else if (key == Key::Down && selected + 1 < (int)found.size())
+            selected++;
+        else if (key == Key::Enter)
+        {
+            if (found.empty())
+                continue;
+            term_raw_restore();
+            std::cout << std::endl;
+            return (practice_position(index, found[selected]));
+        }
+        else if (key == Key::Backspace && !query.empty())
+        {
+            query.erase(query.size() - 1);
+            selected = 0;
+        }
+        else if (key == Key::Char)
+        {
+            query += c;
+            selected = 0;
+        }
+    }
+}
+
+void LegacyDisplay::practiceStart(const PracticeView &v)
+{
+    system("clear");
+    std::cout << "==================================================================" << std::endl;
+    std::cout << YELLOW << BOLD << "PRACTICE" << RESET << " (no timer, no grade)" << std::endl
+              << std::endl;
+    practiceStatus(v, false);
+    std::cout << "==================================================================" << std::endl;
+    std::cout << "Use the \"" << LIME << "grademe" << RESET << "\" command to be graded, or \"" << LIME << "help" << RESET << "\" to get some help." << std::endl;
+}
+
+void LegacyDisplay::practiceStatus(const PracticeView &v, bool clear)
+{
+    if (clear)
+        system("clear");
+    std::cout << "Assignment: " << LIME << v.entry.name << RESET << " (" << v.path << ")" << std::endl;
+    std::cout << "Tries: " << YELLOW << v.tries << RESET << std::endl;
+    if (v.cooldown_until > time(NULL))
+        std::cout << "Cooldown: " << YELLOW << v.cooldown_until - time(NULL) << " seconds" << RESET << std::endl;
+    std::cout << "Subject location:  " << LIME << current_path() << "/subjects/subject.en.txt" << RESET << std::endl;
+    std::cout << "Exercise location: " << RED << current_path() << "/rendu/" << v.entry.name << "/" << RESET << std::endl;
+}
+
+void LegacyDisplay::practiceHelp(void)
+{
+    std::cout << "Commands:" << std::endl;
+    std::cout << LIME << "    grademe:" << RESET << " grade your exercise" << std::endl;
+    std::cout << LIME << "    pick:" << RESET << " search another exercise" << std::endl;
+    std::cout << LIME << "    random:" << RESET << " random exercise from the same exam and level" << std::endl;
+    std::cout << LIME << "    status:" << RESET << " display the current exercise" << std::endl;
+    std::cout << LIME << "    exit:" << RESET << " back to the main menu" << std::endl;
+}
+
+PracticeAction LegacyDisplay::practiceCommand(const PracticeView &)
+{
+    return (read_practice_action("\e[93mpractice\e[0m> "));
+}
+
+void LegacyDisplay::practiceCooldown(time_t seconds)
+{
+    std::cout << RED << "ERROR: " << RESET << "You must wait at least " << YELLOW << BOLD;
+    if (seconds / 60 >= 1)
+        std::cout << seconds / 60 << " minutes" << RESET << " and " << YELLOW << BOLD << seconds % 60 << " seconds" << RESET;
+    else
+        std::cout << seconds << " seconds" << RESET;
+    std::cout << " until next grading request (setting 5)." << std::endl;
+}
+
+std::string LegacyDisplay::practicePassed(const GradeResult &)
+{
+    std::cout << std::endl
+              << LIME << ">>>>>>>>>> SUCCESS <<<<<<<<<<" << RESET << std::endl
+              << std::endl;
+    std::string choice = "";
+    while (1)
+    {
+        std::cout << "    " << LIME << "1" << RESET << "  retry the same exercise" << std::endl;
+        std::cout << "    " << LIME << "2" << RESET << "  pick another" << std::endl;
+        std::cout << "    " << LIME << "3" << RESET << "  random from the same level" << std::endl;
+        std::cout << "    " << LIME << "0" << RESET << "  exit to the main menu" << std::endl;
+        std::cout << "Your choice: ";
+        if (!std::getline(std::cin, choice))
+            sigd();
+        if (choice == "0" || choice == "1" || choice == "2" || choice == "3")
+            return (choice);
+    }
 }

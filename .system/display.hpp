@@ -110,6 +110,38 @@ struct RestoreView
     time_t end_time;
 };
 
+// ==> One exercise of the Practice index
+struct practice_entry
+{
+    std::string name;
+    std::string part;
+    int exam;
+    int lvl;
+    bool passed;
+};
+std::vector<practice_entry> practice_filter(const std::vector<practice_entry> &index, const std::string &query, bool &bad_filter);
+
+// ==> The exercise being practised
+struct PracticeView
+{
+    practice_entry entry;
+    std::string path;      // .subjects/... folder of the exercise
+    int tries;             // failed tries
+    time_t cooldown_until; // next grademe allowed at, 0 when the Practice cooldown is off
+};
+
+// ==> What the user asked for at the practice prompt
+enum class PracticeAction
+{
+    Grade,
+    Pick,
+    Random,
+    Status,
+    Help,
+    Exit,
+    Unknown
+};
+
 // ==> What the user asked for at the exam prompt
 enum class Action
 {
@@ -142,7 +174,10 @@ enum class Msg
     BackupOpenError,
     RestoringToken,
     TokenDeleted,
-    SettingsSaved
+    SettingsSaved,
+    PracticeTokenDeleted,
+    PracticeNoExercises,
+    PracticeOnlyOne
 };
 
 class Display
@@ -179,6 +214,16 @@ public:
     virtual void showResult(const GradeResult &r) = 0;
     virtual void showEnd(const ExamSummary &s) = 0;
 
+    // practice mode
+    virtual bool practiceGuard(const RestoreView &saved) = 0; // saved exam found: true to clear it, false to go back
+    virtual int practicePicker(const std::vector<practice_entry> &index, std::string &query) = 0; // position in index, -1 = back
+    virtual void practiceStart(const PracticeView &v) = 0;
+    virtual void practiceStatus(const PracticeView &v, bool clear) = 0;
+    virtual void practiceHelp(void) = 0;
+    virtual PracticeAction practiceCommand(const PracticeView &v) = 0;
+    virtual void practiceCooldown(time_t seconds) = 0;
+    virtual std::string practicePassed(const GradeResult &r) = 0; // "1" retry, "2" pick, "3" random, "0" leave
+
     virtual void message(Msg m) = 0;
     virtual void error(const std::string &text) = 0;
 };
@@ -212,11 +257,21 @@ public:
     void showResult(const GradeResult &r);
     void showEnd(const ExamSummary &s);
 
+    bool practiceGuard(const RestoreView &saved);
+    int practicePicker(const std::vector<practice_entry> &index, std::string &query);
+    void practiceStart(const PracticeView &v);
+    void practiceStatus(const PracticeView &v, bool clear);
+    void practiceHelp(void);
+    PracticeAction practiceCommand(const PracticeView &v);
+    void practiceCooldown(time_t seconds);
+    std::string practicePassed(const GradeResult &r);
+
     void message(Msg m);
     void error(const std::string &text);
 
 protected:
     void rollExercise(const ExamView &v);
+    int practicePickerLines(const std::vector<practice_entry> &index, std::string &query);
 };
 
 // ==> "Exact examshell display" setting: the real examshell wording for the status
@@ -257,6 +312,15 @@ public:
     void showResult(const GradeResult &r);
     void showEnd(const ExamSummary &s);
 
+    bool practiceGuard(const RestoreView &saved);
+    int practicePicker(const std::vector<practice_entry> &index, std::string &query);
+    void practiceStart(const PracticeView &v);
+    void practiceStatus(const PracticeView &v, bool clear);
+    void practiceHelp(void);
+    PracticeAction practiceCommand(const PracticeView &v);
+    void practiceCooldown(time_t seconds);
+    std::string practicePassed(const GradeResult &r);
+
     void message(Msg m);
     void error(const std::string &text);
 
@@ -279,7 +343,10 @@ private:
 
 // shared by the displays
 void play_login(const std::string &username);
-Action read_action(const std::string &prompt); // readline until a non-blank line
+std::string read_command(const std::string &prompt); // readline until a non-blank line, trimmed
+Action read_action(const std::string &prompt);
+PracticeAction read_practice_action(const std::string &prompt);
+int practice_position(const std::vector<practice_entry> &index, const practice_entry &entry); // -1 if absent
 
 // Display style setting -> Display subclass
 Display *make_display(DisplayStyle style);

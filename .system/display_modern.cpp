@@ -747,10 +747,234 @@ void ModernDisplay::message(Msg m)
     case Msg::SettingsSaved:
         std::cout << "  " << paint(Color::Success, sym(Sym::Check)) << " settings saved" << std::endl;
         break;
+    case Msg::PracticeTokenDeleted:
+        std::cout << dim("  saved exam cleared") << std::endl;
+        break;
+    case Msg::PracticeNoExercises:
+        std::cout << "  " << cross << " no exercise found in .subjects/" << std::endl;
+        break;
+    case Msg::PracticeOnlyOne:
+        std::cout << "  " << cross << " this level has only one exercise" << std::endl;
+        break;
     }
 }
 
 void ModernDisplay::error(const std::string &text)
 {
     std::cout << "  " << paint(Color::Failure, sym(Sym::Cross)) << " " << text << std::endl;
+}
+
+// ==> Practice mode
+
+static std::string part_label(const practice_entry &e)
+{
+    return (e.part == "STUD_PART" ? "Student" : "Piscine");
+}
+
+// name, part, exam, level and ✓; plain text so it also works inside the highlight
+static std::string practice_row(const practice_entry &e, int name_width)
+{
+    return (ui::pad(e.name, name_width) + "  " + ui::pad(part_label(e), 8) + "exam " + two(e.exam) + "  lvl " + ui::pad(std::to_string(e.lvl), 2) + "  " + (e.passed ? sym(Sym::Check) : " "));
+}
+
+bool ModernDisplay::practiceGuard(const RestoreView &saved)
+{
+    std::vector<std::string> lines;
+    lines.push_back(dim("exam      ") + bold(exam_title(saved.student, saved.exam_number)));
+    lines.push_back(dim("exercise  ") + saved.ex_name);
+    lines.push_back("");
+    lines.push_back(paint(Color::Warning, "Practice clears the files of this exam session."));
+    ui::BoxOpts opts;
+    opts.title = bold("Saved exam found");
+    std::string header = "\n" + ui::box(lines, opts);
+
+    std::vector<Option> o;
+    o.push_back({"1", "Clear the exam", "and start Practice"});
+    o.push_back({"0", "Back", "keep the saved exam"});
+    int cursor = 1;
+    std::string keys = uni("↑↓", "up/down") + " move " + dot() + " enter select " + dot() + " esc back";
+    std::string answer;
+    while (answer != "1" && answer != "0")
+        answer = pick(header, o, cursor, footer_keys(keys), "0");
+    return (answer == "1");
+}
+
+// ==> Live search: type to filter, ↑↓ to move, enter to pick, esc to go back
+int ModernDisplay::practicePicker(const std::vector<practice_entry> &index, std::string &query)
+{
+    std::string caret = paint(Color::Current, uni("█", "_"));
+    std::string filters = "filters: part:stud part:piscine exam:N lvl:N passed -passed";
+    int width = std::min(std::max(term_width() - 2, 40), 70);
+    int name_width = 12;
+    for (size_t i = 0; i < index.size(); i++)
+        name_width = std::max(name_width, ui::display_width(index[i].name));
+    name_width = std::min(name_width, std::max(width - 32, 12));
+    bool raw = term_raw_enter();
+    int selected = 0, offset = 0, drawn = -1;
+    while (1)
+    {
+        bool bad_filter;
+        std::vector<practice_entry> found = practice_filter(index, query, bad_filter);
+        if (selected >= (int)found.size())
+            selected = found.size() ? found.size() - 1 : 0;
+
+        std::vector<std::string> head(1, dim("search  ") + query + (raw ? caret : ""));
+        ui::BoxOpts opts;
+        opts.title = bold("Practice");
+        opts.label = dim(std::to_string(found.size()) + " / " + std::to_string(index.size()));
+        opts.footer = bad_filter ? paint(Color::Failure, sym(Sym::Cross) + " unknown filter") : dim(filters);
+        opts.width = width;
+        std::string frame = "\n" + ui::box(head, opts) + "\n";
+
+        if (!raw)
+        {
+            // no terminal: numbered list and a typed answer
+            for (size_t i = 0; i < found.size(); i++)
+                frame += "  " + ui::pad(std::to_string(i + 1), 4, ui::Align::Right) + "  " + practice_row(found[i], name_width) + "\n";
+            std::cout << repaint(-1, frame) << std::endl
+                      << "  number to pick, words to search, enter to go back: " << std::flush;
+            std::string input = trim(read_line());
+            if (input.empty())
+                return (-1);
+            int n = atoi(input.c_str());
+            if (input.find_first_not_of("0123456789") == std::string::npos && n >= 1 && n <= (int)found.size())
+                return (practice_position(index, found[n - 1]));
+            query = input;
+            continue;
+        }
+
+        // the whole frame stays under the terminal height, so it can be repainted in place
+        int rows = std::max(term_height() - 9, 3);
+        if (selected < offset)
+            offset = selected;
+        if (selected >= offset + rows)
+            offset = selected - rows + 1;
+        if (found.empty())
+            frame += dim("    no exercise matches") + "\n";
+        for (int i = offset; i < (int)found.size() && i < offset + rows; i++)
+        {
+            if (i == selected)
+                frame += "  " + highlight(" " + sym(Sym::Prompt) + " " + practice_row(found[i], name_width) + " ") + "\n";
+            else
+                frame += "     " + practice_row(found[i], name_width) + "\n";
+        }
+        int hidden = (int)found.size() - offset - rows;
+        frame += hidden > 0 ? dim("     " + sym(Sym::Ellipsis) + " " + std::to_string(hidden) + " more") + "\n" : "\n";
+        frame += footer_keys("type to search " + dot() + " " + uni("↑↓", "up/down") + " move " + dot() + " enter select " + dot() + " esc back");
+        std::cout << repaint(drawn, frame) << std::flush;
+        drawn = count_lines(frame);
+
+        char c = 0;
+        Key k = read_key(c);
+        if (k == Key::Esc)
+        {
+            term_raw_restore();
+            std::cout << clear_screen() << std::flush;
+            return (-1);
+        }
+        else if (k == Key::Up && selected > 0)
+            selected--;
+        else if (k == Key::Down && selected + 1 < (int)found.size())
+            selected++;
+        else if (k == Key::Enter && !found.empty())
+        {
+            term_raw_restore();
+            std::cout << clear_screen() << std::flush;
+            return (practice_position(index, found[selected]));
+        }
+        else if (k == Key::Backspace && !query.empty())
+        {
+            query.erase(query.size() - 1);
+            selected = 0;
+            offset = 0;
+        }
+        else if (k == Key::Char)
+        {
+            query += c;
+            selected = 0;
+            offset = 0;
+        }
+    }
+}
+
+void ModernDisplay::practiceStart(const PracticeView &v)
+{
+    practiceStatus(v, true);
+}
+
+void ModernDisplay::practiceStatus(const PracticeView &v, bool clear)
+{
+    time_t now = time(NULL);
+    const practice_entry &e = v.entry;
+    std::vector<std::string> lines;
+    std::string where = part_label(e) + " " + dot() + " exam " + two(e.exam) + " " + dot() + " lvl " + std::to_string(e.lvl);
+    lines.push_back(bold(e.name) + "   " + dim(where) + (e.passed ? "   " + paint(Color::Success, sym(Sym::Check) + " passed before") : ""));
+    std::string next = dim("no cooldown");
+    if (v.cooldown_until)
+        next = paint(Color::Current, sym(Sym::Cooldown)) + " next grade: " + (v.cooldown_until > now ? paint(Color::Warning, "in " + wait_time(v.cooldown_until - now)) : paint(Color::Success, "now"));
+    std::string tries = v.tries ? paint(Color::Failure, std::to_string(v.tries) + " failed") : dim("no tries yet");
+    lines.push_back(ui::pad(tries, 18) + next);
+    ui::BoxOpts opts;
+    opts.title = paint(Color::Bold, paint(Color::Warning, "PRACTICE"));
+    opts.label = dim("no timer " + dot() + " no grade");
+
+    std::cout << (clear ? clear_screen() : "") << std::endl
+              << ui::box(lines, opts) << std::endl
+              << "   " << dim("subject  ") << " subjects/subject.en.txt" << std::endl
+              << "   " << dim("your code") << " rendu/" << e.name << "/" << std::endl
+              << std::endl
+              << "   " << dim("grademe to be graded " + dot() + " pick or random for another " + dot() + " help") << std::endl
+              << std::endl;
+}
+
+void ModernDisplay::practiceHelp(void)
+{
+    std::vector<std::vector<std::string> > rows;
+    rows.push_back({paint(Color::Success, "grademe"), "grade your exercise"});
+    rows.push_back({paint(Color::Success, "pick"), "search another exercise"});
+    rows.push_back({paint(Color::Success, "random"), "random exercise from the same exam and level"});
+    rows.push_back({paint(Color::Success, "status"), "show the current exercise"});
+    rows.push_back({paint(Color::Success, "exit"), "back to the main menu"});
+    std::vector<std::string> lines = ui::columns(rows, 3);
+    std::cout << std::endl << "  " << bold("Commands") << std::endl;
+    for (size_t i = 0; i < lines.size(); i++)
+        std::cout << "    " << lines[i] << std::endl;
+    std::cout << std::endl;
+}
+
+PracticeAction ModernDisplay::practiceCommand(const PracticeView &v)
+{
+    std::string end = rl(ui::reset());
+    std::string prompt = rl(ui::esc(Color::Warning)) + "practice" + end + " " + rl(ui::esc(Color::Dim)) + "[" + v.entry.name + "]" + end + " " + rl(ui::esc(Color::Success)) + sym(Sym::Prompt) + end + " ";
+    return (read_practice_action(prompt));
+}
+
+void ModernDisplay::practiceCooldown(time_t seconds)
+{
+    cooldownError(seconds);
+}
+
+// ==> Pass card, then what to do next: "1" retry, "2" pick, "3" random, "0" leave
+std::string ModernDisplay::practicePassed(const GradeResult &r)
+{
+    std::vector<std::string> lines;
+    std::string tests = r.tests ? std::to_string(r.tests) + "/" + std::to_string(r.tests) + " tests   " : "";
+    lines.push_back(bold(r.ex_name) + "   " + tests + dim(ordinal(r.tries) + " try"));
+    ui::BoxOpts opts;
+    opts.title = paint(Color::Success, sym(Sym::Check) + " PASSED");
+    opts.footer = dim("saved in success/practice_ex");
+    opts.color = Color::Success;
+    std::string header = "\n" + ui::box(lines, opts);
+
+    std::vector<Option> o;
+    o.push_back({"1", "Retry", "the same exercise"});
+    o.push_back({"2", "Pick another", "search the list"});
+    o.push_back({"3", "Random", "same exam and level"});
+    o.push_back({"0", "Main menu", "leave Practice"});
+    int cursor = 1;
+    std::string keys = uni("↑↓", "up/down") + " move " + dot() + " enter select " + dot() + " esc main menu";
+    std::string answer;
+    while (answer != "0" && answer != "1" && answer != "2" && answer != "3")
+        answer = pick(header, o, cursor, footer_keys(keys), "0");
+    return (answer);
 }
