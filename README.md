@@ -96,7 +96,7 @@ Saved in `.system/exam_token/.settings`.
 
 1. Enable exercises you already passed
 2. Enable cheat commands
-3. Exact examshell display: use status screens worded like the real 42 examshell
+3. Display style: **Modern** (default), **Legacy** or **Exact examshell** (status screens worded like the real 42 examshell). Press 3 to cycle; it applies as soon as you leave the menu, also in the middle of an exam. Settings files from older versions load as Exact examshell if that switch was on, otherwise Modern
 4. Login animation: show the fake examshell login when an exam starts
 5. Cooldown in Practice mode (default off): after a failed `grademe` in Practice, wait like in an exam; the wait grows with each failure and resets when you switch exercise
 

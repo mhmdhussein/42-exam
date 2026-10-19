@@ -103,26 +103,33 @@ void exam::load_settings(void)
     if (file.is_open())
     {
         bool v;
+        bool esd = false;
+        int style;
         if (file >> v)
             setting_dse = v;
         if (file >> v)
             setting_dcc = v;
         if (file >> v)
-            setting_esd = v;
+            esd = v;
         if (file >> v)
             setting_anim = v;
         if (file >> v)
             setting_pcd = v;
+        // Line 6 is the display style; files without it only know the old esd switch (line 3)
+        if (file >> style && style >= 0 && style <= 2)
+            setting_style = (DisplayStyle)style;
+        else
+            setting_style = esd ? DisplayStyle::Exact : DisplayStyle::Modern;
         file.close();
     }
     set_display();
 }
 
-// ==> Pick the display matching the "Exact examshell display" setting
+// ==> Pick the display matching the "Display style" setting
 void exam::set_display(void)
 {
     delete display;
-    display = make_display(setting_esd);
+    display = make_display(setting_style);
 }
 
 // ==> Save setting_dse bool into .settings file
@@ -133,9 +140,10 @@ void exam::save_settings(void)
     {
         file << setting_dse << std::endl;
         file << setting_dcc << std::endl;
-        file << setting_esd << std::endl;
+        file << (setting_style == DisplayStyle::Exact) << std::endl;
         file << setting_anim << std::endl;
         file << setting_pcd << std::endl;
+        file << (int)setting_style << std::endl;
         file.close();
     }
 }

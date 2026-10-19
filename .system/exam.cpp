@@ -140,7 +140,7 @@ exam::exam(void) : student(false), level_max(0), display(NULL), using_cheatcode(
     username = getenv("USER") ? getenv("USER") : "student";
     setting_dse = false;
     setting_dcc = false;
-    setting_esd = false;
+    setting_style = DisplayStyle::Modern;
     setting_anim = true;
     setting_pcd = false;
     load_settings();

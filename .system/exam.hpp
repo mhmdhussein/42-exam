@@ -113,7 +113,7 @@ private:
 
     bool setting_dse;
     bool setting_dcc;
-    bool setting_esd;
+    DisplayStyle setting_style;
     bool setting_anim;
     bool setting_pcd;
     std::string username;

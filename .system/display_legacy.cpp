@@ -131,6 +131,15 @@ static void print_toggle(bool on)
         std::cout << RED << BOLD << " OFF" << RESET << std::endl;
 }
 
+static const char *style_name(DisplayStyle style)
+{
+    if (style == DisplayStyle::Exact)
+        return ("Exact examshell");
+    if (style == DisplayStyle::Legacy)
+        return ("Legacy");
+    return ("Modern");
+}
+
 // ==> Setting MENU, returns the key typed (read word by word)
 std::string LegacyDisplay::settingsMenu(const SettingsView &s)
 {
@@ -143,8 +152,7 @@ std::string LegacyDisplay::settingsMenu(const SettingsView &s)
     print_toggle(s.dse);
     std::cout << LIME << "2." << WHITE << BOLD << " Enable cheat commands";
     print_toggle(s.dcc);
-    std::cout << LIME << "3." << WHITE << BOLD << " Exact examshell display";
-    print_toggle(s.esd);
+    std::cout << LIME << "3." << WHITE << BOLD << " Display style " << LIME << BOLD << style_name(s.style) << RESET << std::endl;
     std::cout << LIME << "4." << WHITE << BOLD << " Login animation";
     print_toggle(s.anim);
     std::cout << LIME << "5." << WHITE << BOLD << " Cooldown in Practice mode";
@@ -387,7 +395,7 @@ void LegacyDisplay::showHelp(bool cheats)
 {
     std::cout << "Commands:" << std::endl;
     std::cout << LIME << "    help:" << RESET << " display this help" << std::endl;
-    std::cout << LIME << "    settings: " << RESET << "display settings menu" << std::endl;
+    std::cout << LIME << "    settings: " << RESET << "display settings menu (display style applies right away)" << std::endl;
     std::cout << LIME << "    status:" << RESET << " display information about the exam" << std::endl;
     std::cout << LIME << "    finish:" << RESET << " exit the exam" << std::endl;
     std::cout << LIME << "    grademe:" << RESET << " grade your exercise" << std::endl;
