@@ -100,6 +100,12 @@ std::string LegacyDisplay::piscineMenu(bool invalid)
     std::cout << std::endl
               << LIME << "            2" << RESET << WHITE << BOLD << std::endl
               << "       EXAM WEEK 02" << std::endl;
+    std::cout << std::endl
+              << LIME << "            3" << RESET << WHITE << BOLD << std::endl
+              << "       EXAM WEEK 03" << std::endl;
+    std::cout << std::endl
+              << LIME << "            4" << RESET << WHITE << BOLD << std::endl
+              << "       EXAM WEEK 04" << std::endl;
     std::cout << RESET << BOLD << std::endl
               << "     \\ ------------ /" << std::endl
               << std::endl
