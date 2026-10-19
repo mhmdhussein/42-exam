@@ -37,7 +37,6 @@ bool file_exists(std::string path);
 void reset_folder(void);
 void sigc(int sig);
 void sigd(void);
-void practice_restore_terminal(void);
 
 struct practice_entry
 {
