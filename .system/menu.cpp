@@ -71,7 +71,7 @@ int exam::piscine_menu(void)
     while (choice == "-1" || choice == "-2")
     {
         choice = display->piscineMenu(choice == "-1");
-        if (choice != "1" && choice != "2" && choice != "0")
+        if (choice != "1" && choice != "2" && choice != "3" && choice != "4" && choice != "0")
             choice = "-1";
     }
     return (atoi(choice.c_str()));

@@ -1,39 +1,7 @@
 #include "exam.hpp"
-#include <termios.h>
-#include <sys/ioctl.h>
-#include <poll.h>
+#include "term.hpp"
+#include "ui.hpp"
 #include <algorithm>
-
-// terminal state, global so sigc/sigd can restore it
-static struct termios g_saved_termios;
-static bool g_raw_active = false;
-
-// ==> Put the terminal back in line mode with a visible cursor
-void practice_restore_terminal(void)
-{
-    if (!g_raw_active)
-        return;
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_saved_termios);
-    write(STDOUT_FILENO, "\e[?25h", 6);
-    g_raw_active = false;
-}
-
-static bool enter_raw_mode(void)
-{
-    if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO))
-        return (false);
-    if (tcgetattr(STDIN_FILENO, &g_saved_termios) == -1)
-        return (false);
-    struct termios raw = g_saved_termios;
-    raw.c_lflag &= ~(ICANON | ECHO);
-    raw.c_cc[VMIN] = 1;
-    raw.c_cc[VTIME] = 0;
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1)
-        return (false);
-    g_raw_active = true;
-    write(STDOUT_FILENO, "\e[?25l", 6);
-    return (true);
-}
 
 static std::string to_lower(std::string s)
 {
@@ -201,7 +169,7 @@ static std::string entry_row(const practice_entry &entry)
         << std::setw(7) << (entry.part == "STUD_PART" ? "STUD" : "PISCINE")
         << " exam_0" << entry.exam << "  lvl " << entry.lvl;
     if (entry.passed)
-        row << "  " << LIME << "✓" << RESET;
+        row << "  " << ui::paint(ui::Color::Success, ui::sym(ui::Sym::Check));
     return (row.str());
 }
 
@@ -243,7 +211,7 @@ int exam::practice_picker_lines(std::vector<practice_entry> &index, std::string 
 // ==> Live search bar, returns the index of the selected exercise or -1 on Esc
 int exam::practice_picker(std::vector<practice_entry> &index, std::string &query)
 {
-    if (!enter_raw_mode())
+    if (!term_raw_enter())
         return (practice_picker_lines(index, query));
 
     int selected = 0;
@@ -255,11 +223,7 @@ int exam::practice_picker(std::vector<practice_entry> &index, std::string &query
         if (selected >= (int)found.size())
             selected = found.size() ? found.size() - 1 : 0;
 
-        struct winsize ws;
-        int height = 24;
-        if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_row > 0)
-            height = ws.ws_row;
-        int rows = std::max(height - 3, 1);
+        int rows = std::max(term_height() - 3, 1);
         if (selected < offset)
             offset = selected;
         if (selected >= offset + rows)
@@ -283,47 +247,35 @@ int exam::practice_picker(std::vector<practice_entry> &index, std::string &query
         write(STDOUT_FILENO, frame.c_str(), frame.size());
 
         char c;
-        if (read(STDIN_FILENO, &c, 1) <= 0)
+        Key key = term_read_key(c);
+        if (key == Key::Eof)
         {
-            practice_restore_terminal();
+            term_raw_restore();
             sigd();
         }
-        if (c == '\e')
+        else if (key == Key::Esc)
         {
-            // a lone Esc has nothing following it within a short delay
-            struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
-            char seq[2];
-            if (poll(&pfd, 1, 50) <= 0 || read(STDIN_FILENO, &seq[0], 1) <= 0)
-            {
-                practice_restore_terminal();
-                return (-1);
-            }
-            if (poll(&pfd, 1, 50) > 0 && read(STDIN_FILENO, &seq[1], 1) > 0 && seq[0] == '[')
-            {
-                if (seq[1] == 'A' && selected > 0)
-                    selected--;
-                else if (seq[1] == 'B' && selected + 1 < (int)found.size())
-                    selected++;
-            }
+            term_raw_restore();
+            return (-1);
         }
-        else if (c == 16 && selected > 0)
+        else if (key == Key::Up && selected > 0)
             selected--;
-        else if (c == 14 && selected + 1 < (int)found.size())
+        else if (key == Key::Down && selected + 1 < (int)found.size())
             selected++;
-        else if (c == '\n' || c == '\r')
+        else if (key == Key::Enter)
         {
             if (found.empty())
                 continue;
-            practice_restore_terminal();
+            term_raw_restore();
             std::cout << std::endl;
             return (index_of(index, found[selected]));
         }
-        else if ((c == 127 || c == 8) && !query.empty())
+        else if (key == Key::Backspace && !query.empty())
         {
             query.erase(query.size() - 1);
             selected = 0;
         }
-        else if (c >= 32 && c < 127)
+        else if (key == Key::Char)
         {
             query += c;
             selected = 0;
