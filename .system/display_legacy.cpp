@@ -443,9 +443,9 @@ std::string read_command(const std::string &prompt)
     return (input);
 }
 
-PracticeAction read_practice_action(const std::string &prompt)
+// ==> Typed command -> PracticeAction; also used by the command line of the Dashboard
+PracticeAction parse_practice_action(const std::string &input)
 {
-    std::string input = read_command(prompt);
     if (input == "exit" || input == "quit")
         return (PracticeAction::Exit);
     if (input == "help")
@@ -459,6 +459,11 @@ PracticeAction read_practice_action(const std::string &prompt)
     if (input == "grademe")
         return (PracticeAction::Grade);
     return (PracticeAction::Unknown);
+}
+
+PracticeAction read_practice_action(const std::string &prompt)
+{
+    return (parse_practice_action(read_command(prompt)));
 }
 
 // ==> Typed command -> Action; also used by the command line of the Dashboard
@@ -492,9 +497,9 @@ Action read_action(const std::string &prompt)
     return (parse_action(read_command(prompt)));
 }
 
-bool LegacyDisplay::confirmFinish(void)
+bool LegacyDisplay::confirmFinish(bool quit)
 {
-    std::cout << "Are you sure you want to" << RED << " exit" << RESET << " the exam?" << std::endl;
+    std::cout << "Are you sure you want to" << RED << (quit ? " quit" : " exit") << RESET << (quit ? " the simulator?" : " the exam?") << std::endl;
     std::cout << "All your progress will be " << RED << "lost" << RESET << "." << std::endl;
     std::cout << "Type " << LIME << BOLD << "yes" << RESET << " to confirm." << std::endl;
     std::string input;

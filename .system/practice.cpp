@@ -240,6 +240,11 @@ int exam::practice_prompt(std::vector<practice_entry> &index, int cur, std::stri
         PracticeAction action = display->practiceCommand(practice_view(index[cur]));
         if (action == PracticeAction::Exit)
             return (-1);
+        else if (action == PracticeAction::Quit)
+        {
+            system("rm -rf subjects .system/grading");
+            exit(0);
+        }
         else if (action == PracticeAction::Help)
             display->practiceHelp();
         else if (action == PracticeAction::Status)

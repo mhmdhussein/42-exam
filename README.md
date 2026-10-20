@@ -86,32 +86,46 @@ When an exam ends (all levels passed, or `finish`), you go back to the main menu
 
 The **Dashboard** style (Settings → Display style) runs the whole simulator on one full screen, like
 `htop`, so nothing flickers when the screen changes. The menus, the saved-exam prompt, the exam start
-(how it works, login, welcome) and the end summary are pages of one frame: a title bar, one panel
-and a bar with the keys at the bottom (↑/↓ or `j`/`k`, Enter, Esc, or the number of an entry).
-During the exam: exam, live clock (yellow under 30 minutes, red under 10), progress and levels on
-the left, the subject top right, the last grade (spinner while grading, then the result card) bottom
-right, and the keys and the cooldown at the bottom. Settings opens as a box over the exam.
+(how it works, login, welcome), the Practice search and the end summary are pages of one frame: a
+title bar, one panel and a bar with the keys at the bottom (↑/↓ or `j`/`k`, Enter, Esc, or the
+number of an entry). During the exam: exam, live clock (yellow under 30 minutes, red under 10),
+progress and levels on the left, the subject top right, the last grade (spinner while grading, then
+the result card) bottom right, and the keys and the cooldown at the bottom. Settings opens as a box
+over the exam. In a narrow window the key bar leaves out `s` and `t`; `?` lists every key.
 
-Finishing an exam (`q`, `finish`, or passing the last level) shows the summary and goes back to the
-main menu, still full screen. The full screen closes only when you quit (`q` in the main menu,
-`exit`, Ctrl+C, Ctrl+D): if an exam just ended, its summary is printed on the normal screen so it
-stays in your scrollback. Practice mode still uses the Modern screens on the normal screen and comes
-back to the full screen when you leave it.
+`f` finishes the exam: type `yes` and you are back at the main menu, still full screen (passing the
+last level shows the summary first). `q` quits the simulator after a typed `yes`, like `exit`. The
+full screen closes only when you quit (`q`/`exit`, `q` in the main menu, Ctrl+C, Ctrl+D): if an exam
+just ended, its summary is printed on the normal screen so it stays in your scrollback.
 
 It needs a terminal of at least 80×24: smaller at the start, or when the input is not a terminal,
 the simulator falls back to the Modern style; if the window shrinks below that later, it asks you to
 make it bigger. `NO_COLOR` and `EXAMSHELL_ASCII` work as in Modern.
 
-| Key | |
+| Exam key | |
 |---|---|
 | `g` | Grade (asks `y/n`) |
 | `s` / Tab | Scroll the subject: ↑/↓, PgUp/PgDn, `j`/`k`; Esc to leave |
 | `t` | Full trace of the last failure (Esc or `q` returns) |
 | `,` | Settings (changing the style applies right away) |
 | `?` | Key help |
-| `q` | Leave the exam (type `yes`), back to the main menu |
+| `f` | Finish: leave the exam (type `yes`), back to the main menu |
+| `q` | Quit the simulator (type `yes`) |
 | `:` | Type a command, as at the prompt: `grademe`, `status`, `finish`, `exit`, cheat commands... |
-| `G` `r` `f` `n` | `gradenow`, `remove_grade_time`, `force_success`, `new_ex` (cheat commands on only) |
+| `G` `r` `p` `n` | `gradenow`, `remove_grade_time`, `force_success`, `new_ex` (cheat commands on only) |
+
+Practice uses the same panels, with the exercise, its tries and the cooldown on the left. After a
+pass, a box asks what comes next: retry, pick another, random or the main menu.
+
+| Practice key | |
+|---|---|
+| `g` | Grade |
+| `s` / Tab, `t`, `?` | As in the exam |
+| `p` | Search another exercise (type to filter, Esc returns) |
+| `r` | Random exercise from the same exam and level |
+| `f` | Leave Practice, back to the main menu |
+| `q` | Quit the simulator (asks `y/n`) |
+| `:` | Type a command: `grademe`, `pick`, `random`, `status`, `exit` |
 
 ### Commands
 

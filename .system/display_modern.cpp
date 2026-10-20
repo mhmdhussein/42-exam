@@ -623,9 +623,9 @@ Action ModernDisplay::readCommand(const ExamView &v)
     return (read_action(prompt));
 }
 
-bool ModernDisplay::confirmFinish(void)
+bool ModernDisplay::confirmFinish(bool quit)
 {
-    std::cout << "  " << paint(Color::Failure, "Leave the exam?") << " All your progress will be lost." << std::endl
+    std::cout << "  " << paint(Color::Failure, quit ? "Quit the simulator?" : "Leave the exam?") << " All your progress will be lost." << std::endl
               << "  Type " << bold("yes") << " to confirm: " << std::flush;
     return (trim(read_line()) == "yes");
 }
@@ -873,13 +873,13 @@ void ModernDisplay::error(const std::string &text)
 
 // ==> Practice mode
 
-static std::string part_label(const practice_entry &e)
+std::string modern::part_label(const practice_entry &e)
 {
     return (e.part == "STUD_PART" ? "Student" : "Piscine");
 }
 
 // name, part, exam, level and ✓; plain text so it also works inside the highlight
-static std::string practice_row(const practice_entry &e, int name_width)
+std::string modern::practice_row(const practice_entry &e, int name_width)
 {
     return (ui::pad(e.name, name_width) + "  " + ui::pad(part_label(e), 8) + "exam " + two(e.exam) + "  lvl " + ui::pad(std::to_string(e.lvl), 2) + "  " + (e.passed ? sym(Sym::Check) : " "));
 }
