@@ -17,7 +17,7 @@ void exam::exam_prompt(void)
         {
         case Action::Finish:
         case Action::Quit:
-            if (display->confirmFinish())
+            if (display->confirmFinish(action == Action::Quit))
             {
                 if (std::ifstream(".system/exam_token/current_token.txt"))
                     remove(".system/exam_token/current_token.txt");

@@ -58,7 +58,7 @@ void exam::copy_ex_files(void)
     system("mkdir .system/grading 2> /dev/null");
 
     // copy all the files in the current get_path() + attachment/* to the subjects directory
-    std::string cmd_system_call = "cp -r " + get_path() + "/attachment/*" + " subjects/";
+    std::string cmd_system_call = "cp -r " + get_path() + "/attachment/*" + " subjects/ 2> /dev/null";
     system(cmd_system_call.c_str());
 
     // copy all the files in the current get_path() without the attachment folder to the .system/grading/ directory

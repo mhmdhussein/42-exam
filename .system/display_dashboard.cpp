@@ -18,7 +18,7 @@ using namespace modern;
 // Rules: the first Dashboard screen goes full screen (term_screen_enter) and raw mode stays on
 // until the program quits (dashboard_exit, or sigc/sigd on a signal). The screen is only drawn
 // from the key loop (waitKey), the login animation and the grading spinner, under draw_mutex_.
-// Only Practice (Modern's screens for now) and another display style leave it before then.
+// Only switching to another display style leaves it before then (make_display).
 
 static const int MIN_WIDTH = 80;
 static const int MIN_HEIGHT = 24;
@@ -94,8 +94,13 @@ struct DashState
     bool trace = false;
     std::vector<std::string> trace_lines;
     int trace_scroll = 0;
+
+    bool practice = false; // the panels show a Practice exercise, not the exam
+    PracticeView pview;
 };
 static DashState g;
+
+static void load_panels(void); // subject read again, last grade cleared
 
 // ==> Keep the state of the exercise on screen; a new exercise starts with fresh panels
 static void set_view(const ExamView &v)
@@ -104,10 +109,30 @@ static void set_view(const ExamView &v)
     g.view = v;
     g.page = Page();
     g.in_exam = true;
+    g.practice = false;
     g.ended = false;
     if (key == g.key)
         return;
     g.key = key;
+    load_panels();
+}
+
+// ==> Practice: same panels, a fresh start each time an exercise is (re)started
+static void set_practice(const PracticeView &v, bool fresh)
+{
+    g.pview = v;
+    g.page = Page();
+    g.in_exam = true;
+    g.practice = true;
+    if (fresh)
+    {
+        g.key = "practice";
+        load_panels();
+    }
+}
+
+static void load_panels(void)
+{
     g.subject.clear();
     std::ifstream file("subjects/subject.en.txt");
     std::string line;
@@ -169,6 +194,8 @@ static std::string msg_text(Msg m)
         return (dim("restoring the saved exam" + sym(Sym::Ellipsis)));
     case Msg::TokenDeleted:
         return (dim("saved exam erased"));
+    case Msg::PracticeTokenDeleted:
+        return (dim("saved exam cleared"));
     case Msg::PracticeNoExercises:
         return (cross + "no exercise found in .subjects/");
     default:
@@ -243,6 +270,7 @@ static void new_page(const std::string &where, const std::string &title, const s
     g.page.title = title;
     g.page.keys = keys;
     g.in_exam = false;
+    g.practice = false;
     g.help = false;
     g.trace = false;
 }
@@ -366,6 +394,16 @@ void DashboardDisplay::drawGrade(const ui::Rect &r)
         ui::text(screen_, in, std::vector<std::string>(1, dim("no grade yet " + dot() + " press ") + paint(Color::Current, "g")));
         return;
     }
+    if (g.practice && g.result.passed) // no levels or points in Practice
+    {
+        std::string tests = g.result.tests ? std::to_string(g.result.tests) + "/" + std::to_string(g.result.tests) + " tests   " : "";
+        std::vector<std::string> lines;
+        lines.push_back(bold(g.result.ex_name) + "   " + tests + dim(ordinal(g.result.tries) + " try"));
+        lines.push_back(dim("saved in success/practice_ex"));
+        ui::panel(screen_, r, "last grade", paint(Color::Success, sym(Sym::Check) + " PASSED"), Color::Box);
+        ui::text(screen_, in, lines);
+        return;
+    }
     // the biggest card that fits: fewer expected/got lines when the panel is short
     ui::BoxOpts opts;
     std::vector<std::string> lines;
@@ -388,7 +426,7 @@ void DashboardDisplay::drawGrade(const ui::Rect &r)
 }
 
 // ==> Bottom bar: prompt, message or key hints on the left, cooldown on the right
-static std::string bottom_left(void)
+static std::string bottom_left(int room)
 {
     if (g.ask != Ask::None)
     {
@@ -407,15 +445,43 @@ static std::string bottom_left(void)
         return (dim("any key closes the help"));
     if (g.subject_focus)
         return (key_hint(term_unicode() ? "↑↓" : "up/down", "scroll") + "   " + key_hint("PgUp PgDn", "page") + "   " + key_hint("esc", "back"));
-    return (key_hint("g", "grade") + "   " + key_hint("s", "subject") + "   " + key_hint("t", "trace") + "   " + key_hint(",", "settings") + "   " + key_hint("?", "help") + "   " + key_hint("q", "quit"));
+    // s and t go first when the bar is short of room: the help lists them
+    std::vector<std::string> keys;
+    keys.push_back(key_hint("g", "grade"));
+    keys.push_back(key_hint("s", "subject"));
+    keys.push_back(key_hint("t", "trace"));
+    if (g.practice)
+    {
+        keys.push_back(key_hint("p", "pick"));
+        keys.push_back(key_hint("r", "random"));
+    }
+    else
+        keys.push_back(key_hint(",", "settings"));
+    keys.push_back(key_hint("?", "help"));
+    keys.push_back(key_hint("f", g.practice ? "menu" : "finish"));
+    keys.push_back(key_hint("q", "quit"));
+    for (int drop = 0; drop <= 2; drop++)
+        for (int gap = 3; gap >= 2; gap--)
+        {
+            std::string bar;
+            for (size_t i = 0; i < keys.size(); i++)
+                if (!(i == 2 && drop >= 1) && !(i == 1 && drop >= 2))
+                    bar += (bar.empty() ? "" : std::string(gap, ' ')) + keys[i];
+            if (ui::display_width(bar) <= room || (drop == 2 && gap == 2))
+                return (bar); // the key bar cuts what still does not fit
+        }
+    return ("");
 }
 
 static std::string bottom_right(const ExamView &v)
 {
     time_t now = time(NULL);
+    if (g.practice && !g.pview.cooldown_until)
+        return (dim("no cooldown"));
+    time_t until = g.practice ? g.pview.cooldown_until : v.cooldown_until;
     std::string when = paint(Color::Success, "now");
-    if (v.cooldown_until > now)
-        when = paint(Color::Warning, "in " + wait_time(v.cooldown_until - now));
+    if (until > now)
+        when = paint(Color::Warning, "in " + wait_time(until - now));
     return (paint(Color::Current, sym(Sym::Cooldown)) + " grade: " + when);
 }
 
@@ -423,19 +489,33 @@ static std::vector<std::string> help_lines(bool cheats)
 {
     std::vector<std::vector<std::string> > rows;
     std::string arrows = term_unicode() ? "↑↓" : "up/down";
+    if (g.practice)
+    {
+        rows.push_back({paint(Color::Current, "g"), "grade your exercise"});
+        rows.push_back({paint(Color::Current, "s") + dim(" / ") + paint(Color::Current, "tab"), "scroll the subject (" + arrows + " PgUp PgDn j k, esc)"});
+        rows.push_back({paint(Color::Current, "t"), "full trace of the last failure"});
+        rows.push_back({paint(Color::Current, "p"), "search another exercise"});
+        rows.push_back({paint(Color::Current, "r"), "random exercise from the same exam and level"});
+        rows.push_back({paint(Color::Current, "?"), "this help"});
+        rows.push_back({paint(Color::Current, "f"), "leave Practice, back to the main menu"});
+        rows.push_back({paint(Color::Current, "q"), "quit the simulator"});
+        rows.push_back({paint(Color::Current, ":"), "type a command: grademe, pick, random, status, exit"});
+        return (ui::columns(rows, 3));
+    }
     rows.push_back({paint(Color::Current, "g"), "grade your exercise"});
     rows.push_back({paint(Color::Current, "s") + dim(" / ") + paint(Color::Current, "tab"), "scroll the subject (" + arrows + " PgUp PgDn j k, esc)"});
     rows.push_back({paint(Color::Current, "t"), "full trace of the last failure"});
     rows.push_back({paint(Color::Current, ","), "settings (the style applies right away)"});
     rows.push_back({paint(Color::Current, "?"), "this help"});
-    rows.push_back({paint(Color::Current, "q"), "leave the exam, back to the main menu"});
+    rows.push_back({paint(Color::Current, "f"), "finish: leave the exam, back to the main menu"});
+    rows.push_back({paint(Color::Current, "q"), "quit the simulator (progress is lost)"});
     rows.push_back({paint(Color::Current, ":"), "type a command: grademe, status, finish, exit..."});
     size_t base = rows.size();
     if (cheats)
     {
         rows.push_back({paint(Color::Warning, "G"), "gradenow: grade with no cooldown"});
         rows.push_back({paint(Color::Warning, "r"), "remove_grade_time: no cooldown for this exam"});
-        rows.push_back({paint(Color::Warning, "f"), "force_success: pass the current exercise"});
+        rows.push_back({paint(Color::Warning, "p"), "force_success: pass the current exercise"});
         rows.push_back({paint(Color::Warning, "n"), "new_ex: new exercise at the same level"});
     }
     std::vector<std::string> cols = ui::columns(rows, 3);
@@ -450,6 +530,94 @@ static std::vector<std::string> help_lines(bool cheats)
         lines.push_back(cols[i]);
     }
     return (lines);
+}
+
+// ==> Left column during the exam: exam, mode, clock, progress, then the levels
+void DashboardDisplay::drawExamSide(const ui::Rect &head, const ui::Rect &levels)
+{
+    const ExamView &v = g.view;
+    time_t now = time(NULL);
+    // header: exam, mode, clock, progress
+    long left_s = v.end_time - now;
+    Color clock = left_s < 600 ? Color::Failure : left_s < 1800 ? Color::Warning : Color::Text;
+    std::string mode = v.real_mode ? paint(Color::Mode, "REAL") : paint(Color::Warning, "TEST");
+    int in_w = head.w - 4;
+    std::string clock_text = paint(clock, sym(Sym::Clock)) + " " + paint(Color::Bold, paint(clock, clock_long(left_s)));
+    std::string score = std::to_string(v.level_per_ex_save * v.level);
+    std::string points = paint(Color::Bold, paint(Color::Success, score)) + dim("/100");
+    int bar_w = std::max(in_w - 9, 4);
+    std::vector<std::string> head_lines;
+    head_lines.push_back(ui::pad(clock_text, in_w - 4) + mode);
+    head_lines.push_back(ui::progress(v.level, v.level_max, bar_w) + ui::pad(points, in_w - bar_w, ui::Align::Right));
+    ui::panel(screen_, head, bold(exam_title(v.student, v.exam_number)), "", Color::Box);
+    ui::text(screen_, {head.x + 2, head.y + 1, in_w, 2}, head_lines);
+
+    // levels: passed, current, the ones to come
+    std::vector<std::string> level_lines;
+    for (int l = 0; l < v.level_max; l++)
+    {
+        std::string mark, name, right_text;
+        if (l < v.level)
+        {
+            mark = paint(Color::Success, sym(Sym::Check));
+            name = uni("—", "-");
+            for (size_t i = 0; i < v.passed.size(); i++)
+                if (v.passed[i].level == l)
+                {
+                    name = v.passed[i].name;
+                    right_text = dim(tries_text(v.passed[i].tries + 1));
+                }
+        }
+        else if (l == v.level)
+        {
+            mark = paint(Color::Current, sym(Sym::Current));
+            name = bold(v.ex_name);
+            if (v.tries)
+                right_text = paint(Color::Failure, std::to_string(v.tries) + " failed");
+        }
+        else
+        {
+            mark = dim(sym(Sym::Pending));
+            name = dim("???");
+        }
+        std::string num = l == v.level ? paint(Color::Current, std::to_string(l)) : dim(std::to_string(l));
+        int name_w = in_w - 4 - (right_text.empty() ? 0 : ui::display_width(right_text) + 1);
+        level_lines.push_back(mark + " " + num + " " + ui::pad(name, std::max(name_w, 1)) + (right_text.empty() ? "" : " " + right_text));
+    }
+    ui::panel(screen_, levels, "levels", "", Color::Box);
+    ui::text(screen_, {levels.x + 2, levels.y + 1, in_w, levels.h - 2}, level_lines);
+}
+
+// ==> Left column during Practice: the exercise, then its tries, cooldown and paths
+void DashboardDisplay::drawPracticeSide(const ui::Rect &head, const ui::Rect &levels)
+{
+    const PracticeView &v = g.pview;
+    const practice_entry &e = v.entry;
+    time_t now = time(NULL);
+    int in_w = head.w - 4;
+    std::vector<std::string> head_lines;
+    head_lines.push_back(bold(e.name));
+    head_lines.push_back(dim(part_label(e) + " " + dot() + " exam " + two(e.exam) + " " + dot() + " lvl " + std::to_string(e.lvl)));
+    ui::panel(screen_, head, paint(Color::Bold, paint(Color::Warning, "PRACTICE")), "", Color::Box);
+    ui::text(screen_, {head.x + 2, head.y + 1, in_w, 2}, head_lines);
+
+    std::vector<std::string> lines;
+    lines.push_back(v.tries ? paint(Color::Failure, std::to_string(v.tries) + " failed") : dim("no tries yet"));
+    std::string next = dim("no cooldown");
+    if (v.cooldown_until)
+        next = paint(Color::Current, sym(Sym::Cooldown)) + " grade: " + (v.cooldown_until > now ? paint(Color::Warning, "in " + wait_time(v.cooldown_until - now)) : paint(Color::Success, "now"));
+    lines.push_back(next);
+    if (e.passed)
+        lines.push_back(paint(Color::Success, sym(Sym::Check) + " passed before"));
+    lines.push_back("");
+    lines.push_back(dim("subject"));
+    lines.push_back("subjects/subject.en.txt");
+    lines.push_back(dim("your code"));
+    lines.push_back("rendu/" + e.name + "/");
+    lines.push_back("");
+    lines.push_back(dim("no timer " + dot() + " no grade"));
+    ui::panel(screen_, levels, "exercise", "", Color::Box);
+    ui::text(screen_, {levels.x + 2, levels.y + 1, in_w, levels.h - 2}, lines);
 }
 
 void DashboardDisplay::drawFrame(void)
@@ -483,7 +651,7 @@ void DashboardDisplay::drawFrame(void)
         o.panel_label = g.page.label;
         o.color = g.page.color;
         drawPage(ui::frame(screen_, o));
-        ui::key_bar(screen_, bottom_left(), "");
+        ui::key_bar(screen_, bottom_left(W - 3), "");
         return;
     }
 
@@ -510,55 +678,10 @@ void DashboardDisplay::drawFrame(void)
         ui::split_v(right, -grade_h, subject, grade);
         subject.h += 1;
 
-        // header: exam, mode, clock, progress
-        long left_s = v.end_time - now;
-        Color clock = left_s < 600 ? Color::Failure : left_s < 1800 ? Color::Warning : Color::Text;
-        std::string mode = v.real_mode ? paint(Color::Mode, "REAL") : paint(Color::Warning, "TEST");
-        int in_w = head.w - 4;
-        std::string clock_text = paint(clock, sym(Sym::Clock)) + " " + paint(Color::Bold, paint(clock, clock_long(left_s)));
-        std::string score = std::to_string(v.level_per_ex_save * v.level);
-        std::string points = paint(Color::Bold, paint(Color::Success, score)) + dim("/100");
-        int bar_w = std::max(in_w - 9, 4);
-        std::vector<std::string> head_lines;
-        head_lines.push_back(ui::pad(clock_text, in_w - 4) + mode);
-        head_lines.push_back(ui::progress(v.level, v.level_max, bar_w) + ui::pad(points, in_w - bar_w, ui::Align::Right));
-        ui::panel(screen_, head, bold(exam_title(v.student, v.exam_number)), "", Color::Box);
-        ui::text(screen_, {head.x + 2, head.y + 1, in_w, 2}, head_lines);
-
-        // levels: passed, current, the ones to come
-        std::vector<std::string> level_lines;
-        for (int l = 0; l < v.level_max; l++)
-        {
-            std::string mark, name, right_text;
-            if (l < v.level)
-            {
-                mark = paint(Color::Success, sym(Sym::Check));
-                name = uni("—", "-");
-                for (size_t i = 0; i < v.passed.size(); i++)
-                    if (v.passed[i].level == l)
-                    {
-                        name = v.passed[i].name;
-                        right_text = dim(tries_text(v.passed[i].tries + 1));
-                    }
-            }
-            else if (l == v.level)
-            {
-                mark = paint(Color::Current, sym(Sym::Current));
-                name = bold(v.ex_name);
-                if (v.tries)
-                    right_text = paint(Color::Failure, std::to_string(v.tries) + " failed");
-            }
-            else
-            {
-                mark = dim(sym(Sym::Pending));
-                name = dim("???");
-            }
-            std::string num = l == v.level ? paint(Color::Current, std::to_string(l)) : dim(std::to_string(l));
-            int name_w = in_w - 4 - (right_text.empty() ? 0 : ui::display_width(right_text) + 1);
-            level_lines.push_back(mark + " " + num + " " + ui::pad(name, std::max(name_w, 1)) + (right_text.empty() ? "" : " " + right_text));
-        }
-        ui::panel(screen_, levels, "levels", "", Color::Box);
-        ui::text(screen_, {levels.x + 2, levels.y + 1, in_w, levels.h - 2}, level_lines);
+        if (g.practice)
+            drawPracticeSide(head, levels);
+        else
+            drawExamSide(head, levels);
 
         // subject, word-wrapped and scrollable
         ui::Rect sub_in = {subject.x + 2, subject.y + 1, subject.w - 4, subject.h - 2};
@@ -572,7 +695,7 @@ void DashboardDisplay::drawFrame(void)
         g.subject_scroll = std::max(std::min(g.subject_scroll, n - sub_in.h), 0);
         std::string where = n > sub_in.h ? std::to_string(g.subject_scroll + 1) + "-" + std::to_string(std::min(g.subject_scroll + sub_in.h, n)) + "/" + std::to_string(n) : "";
         Color sub_color = g.subject_focus ? Color::Current : Color::Box;
-        std::string sub_title = bold(v.ex_name) + dim(" " + dot() + " subject");
+        std::string sub_title = bold(g.practice ? g.pview.entry.name : v.ex_name) + dim(" " + dot() + " subject");
         ui::panel(screen_, subject, sub_title, dim(where), sub_color);
         ui::text(screen_, sub_in, wrapped, g.subject_scroll);
 
@@ -624,7 +747,8 @@ void DashboardDisplay::drawFrame(void)
         }
     }
 
-    ui::key_bar(screen_, bottom_left(), bottom_right(v));
+    std::string right_text = bottom_right(v);
+    ui::key_bar(screen_, bottom_left(W - ui::display_width(right_text) - 4), right_text);
 }
 
 // ==> Next key. Meanwhile the clock ticks (redrawn at each new second, only the changed cells
@@ -965,6 +1089,38 @@ void DashboardDisplay::showHelp(bool cheats)
     draw();
 }
 
+// ==> Keys shared by the exam and Practice screens: subject scrolling and the trace.
+// True when the key was one of them.
+bool DashboardDisplay::panelKey(Key k, char c)
+{
+    int page = std::max(term_height() * 3 / 5 - 3, 1);
+    if (k == Key::Up || (g.subject_focus && k == Key::Char && c == 'k'))
+        scrollSubject(-1);
+    else if (k == Key::Down || (g.subject_focus && k == Key::Char && c == 'j'))
+        scrollSubject(1);
+    else if (k == Key::PageUp)
+        scrollSubject(-page);
+    else if (k == Key::PageDown || (g.subject_focus && k == Key::Char && c == ' '))
+        scrollSubject(page);
+    else if (k == Key::Esc)
+        g.subject_focus = false;
+    else if (k == Key::Tab || (k == Key::Char && c == 's'))
+        g.subject_focus = !g.subject_focus;
+    else if (k == Key::Char && c == 't')
+        showTrace();
+    else
+        return (k != Key::Char); // other non-character keys do nothing
+    return (true);
+}
+
+// ==> `:` command line in the bottom bar, trimmed; "" when cancelled or blank
+std::string DashboardDisplay::commandLine(void)
+{
+    std::string command = ask(":", true);
+    size_t a = command.find_first_not_of(" \t"), b = command.find_last_not_of(" \t");
+    return (a == std::string::npos ? "" : command.substr(a, b - a + 1));
+}
+
 Action DashboardDisplay::readCommand(const ExamView &v)
 {
     set_view(v);
@@ -975,41 +1131,27 @@ Action DashboardDisplay::readCommand(const ExamView &v)
         draw();
         char c = 0;
         Key k = waitKey(c);
-        int page = std::max(term_height() * 3 / 5 - 3, 1);
-        if (k == Key::Up || (g.subject_focus && k == Key::Char && c == 'k'))
-            scrollSubject(-1);
-        else if (k == Key::Down || (g.subject_focus && k == Key::Char && c == 'j'))
-            scrollSubject(1);
-        else if (k == Key::PageUp)
-            scrollSubject(-page);
-        else if (k == Key::PageDown || (g.subject_focus && k == Key::Char && c == ' '))
-            scrollSubject(page);
-        else if (k == Key::Esc)
-            g.subject_focus = false;
-        else if (k == Key::Tab || (k == Key::Char && c == 's'))
-            g.subject_focus = !g.subject_focus;
-        else if (k != Key::Char)
+        if (panelKey(k, c))
             continue;
         else if (c == 'g')
             return (Action::Grade);
-        else if (c == 't')
-            showTrace();
         else if (c == ',')
             return (Action::Settings);
         else if (c == '?')
             return (Action::Help);
-        else if (c == 'q')
+        else if (c == 'f')
             return (Action::Finish);
+        else if (c == 'q')
+            return (Action::Quit);
         else if (c == ':')
         {
-            std::string command = ask(":", true);
-            size_t a = command.find_first_not_of(" \t"), b = command.find_last_not_of(" \t");
-            if (a != std::string::npos)
-                return (parse_action(command.substr(a, b - a + 1)));
+            std::string command = commandLine();
+            if (!command.empty())
+                return (parse_action(command));
         }
         else if (c == 'n')
             return (Action::NewEx);
-        else if (c == 'f')
+        else if (c == 'p')
             return (Action::ForceSuccess);
         else if (c == 'r')
             return (Action::RemoveGradeTime);
@@ -1018,12 +1160,13 @@ Action DashboardDisplay::readCommand(const ExamView &v)
     }
 }
 
-// ==> Typed "yes" leaves the exam; the main menu (or the quit) comes next, still full screen
-bool DashboardDisplay::confirmFinish(void)
+// ==> Typed "yes" leaves the exam (finish: the main menu comes next, still full screen) or the simulator
+bool DashboardDisplay::confirmFinish(bool quit)
 {
     if (!term_screen_active())
-        return (ModernDisplay::confirmFinish());
-    return (ask("Leave the exam? All progress is lost. Type yes:", true) == "yes");
+        return (ModernDisplay::confirmFinish(quit));
+    std::string question = quit ? "Quit the simulator? All progress is lost. Type yes:" : "Leave the exam? All progress is lost. Type yes:";
+    return (ask(question, true) == "yes");
 }
 
 // ==> End summary: enter goes back to the main menu. After a failed grade the card simply
@@ -1164,52 +1307,195 @@ void DashboardDisplay::error(const std::string &text)
     draw();
 }
 
-// ==> Practice: Modern's screens on the normal screen for now. The full screen is left here and
-// entered again by the next Dashboard screen (the main menu when Practice ends).
+// ==> Practice: the picker and the guard are pages, the exercise uses the exam panels with a
+// Practice column on the left, and the pass choices are a box over them.
+
 bool DashboardDisplay::practiceGuard(const RestoreView &saved)
 {
-    term_screen_leave();
-    return (ModernDisplay::practiceGuard(saved));
+    if (!enter())
+        return (ModernDisplay::practiceGuard(saved));
+    new_page("practice", bold("Saved exam found"), list_keys(key_hint("esc", "back")));
+    g.page.lines.push_back(dim("exam      ") + bold(exam_title(saved.student, saved.exam_number)));
+    g.page.lines.push_back(dim("exercise  ") + saved.ex_name);
+    g.page.lines.push_back("");
+    g.page.lines.push_back(paint(Color::Warning, "Practice clears the files of this exam session."));
+    std::vector<Option> o;
+    o.push_back({"1", "Clear the exam", "and start Practice"});
+    o.push_back({"0", "Back", "keep the saved exam"});
+    int cursor = 1;
+    return (listPick(o, cursor, "0") == "1");
 }
 
+// ==> Live search on a page: type to filter, ↑↓ PgUp PgDn to move, enter to pick, esc to go back
 int DashboardDisplay::practicePicker(const std::vector<practice_entry> &index, std::string &query)
 {
-    term_screen_leave();
-    return (ModernDisplay::practicePicker(index, query));
+    if (!enter())
+        return (ModernDisplay::practicePicker(index, query));
+    new_page("practice", bold("Practice"), key_hint("type", "to search") + "   " + key_hint(arrows(), "move") + "   " + key_hint("enter", "select") + "   " + key_hint("esc", "back"));
+    std::string caret = paint(Color::Current, uni("█", "_"));
+    int name_width = 12;
+    for (size_t i = 0; i < index.size(); i++)
+        name_width = std::max(name_width, ui::display_width(index[i].name));
+    name_width = std::min(name_width, std::max(term_width() - 48, 12));
+    int row_width = 5 + name_width + 28 + 2; // list indent, the row, the highlight padding
+    int selected = 0, offset = 0;
+    while (1)
+    {
+        bool bad_filter;
+        std::vector<practice_entry> found = practice_filter(index, query, bad_filter);
+        if (selected >= (int)found.size())
+            selected = found.size() ? found.size() - 1 : 0;
+        int rows = std::max(term_height() - 12, 3); // the page lines around the list fit the panel
+        if (selected < offset)
+            offset = selected;
+        if (selected >= offset + rows)
+            offset = selected - rows + 1;
+        g.page.label = dim(std::to_string(found.size()) + " / " + std::to_string(index.size()));
+        g.page.lines.assign(1, ui::pad(dim("search  ") + query + caret, row_width)); // a fixed width keeps the block in place
+        g.page.rows.clear();
+        for (int i = offset; i < (int)found.size() && i < offset + rows; i++)
+        {
+            std::string row = practice_row(found[i], name_width);
+            g.page.rows.push_back({"", row, row});
+        }
+        g.page.cursor = selected - offset;
+        if (found.empty())
+        {
+            g.page.lines.push_back("");
+            g.page.lines.push_back(dim("     no exercise matches"));
+        }
+        g.page.after.clear();
+        int hidden = (int)found.size() - offset - rows;
+        g.page.after.push_back(hidden > 0 ? dim("     " + sym(Sym::Ellipsis) + " " + std::to_string(hidden) + " more") : "");
+        g.page.after.push_back(bad_filter ? paint(Color::Failure, sym(Sym::Cross) + " unknown filter") : dim("filters: part:stud part:piscine exam:N lvl:N passed -passed"));
+        draw();
+
+        char c = 0;
+        Key k = waitKey(c);
+        if (k == Key::Esc)
+            return (-1);
+        else if (k == Key::Up && selected > 0)
+            selected--;
+        else if (k == Key::Down && selected + 1 < (int)found.size())
+            selected++;
+        else if (k == Key::PageUp)
+            selected = std::max(selected - rows, 0);
+        else if (k == Key::PageDown && !found.empty())
+            selected = std::min(selected + rows, (int)found.size() - 1);
+        else if (k == Key::Enter && !found.empty())
+            return (practice_position(index, found[selected]));
+        else if (k == Key::Backspace && !query.empty())
+        {
+            query.erase(query.size() - 1);
+            selected = 0;
+            offset = 0;
+        }
+        else if (k == Key::Char)
+        {
+            query += c;
+            selected = 0;
+            offset = 0;
+        }
+    }
 }
 
+// ==> A new or restarted exercise: fresh subject and grade panels
 void DashboardDisplay::practiceStart(const PracticeView &v)
 {
-    term_screen_leave();
-    ModernDisplay::practiceStart(v);
+    if (!enter())
+        return (ModernDisplay::practiceStart(v));
+    set_practice(v, true);
+    draw();
 }
 
 void DashboardDisplay::practiceStatus(const PracticeView &v, bool clear)
 {
-    term_screen_leave();
-    ModernDisplay::practiceStatus(v, clear);
+    if (!enter())
+        return (ModernDisplay::practiceStatus(v, clear));
+    set_practice(v, false);
+    draw();
 }
 
 void DashboardDisplay::practiceHelp(void)
 {
-    term_screen_leave();
-    ModernDisplay::practiceHelp();
+    if (!term_screen_active())
+        return (ModernDisplay::practiceHelp());
+    g.help = true;
+    draw();
+    char c = 0;
+    waitKey(c);
+    g.help = false;
+    draw();
 }
 
 PracticeAction DashboardDisplay::practiceCommand(const PracticeView &v)
 {
-    term_screen_leave();
-    return (ModernDisplay::practiceCommand(v));
+    if (!enter())
+        return (ModernDisplay::practiceCommand(v));
+    set_practice(v, false);
+    while (1)
+    {
+        draw();
+        char c = 0;
+        Key k = waitKey(c);
+        if (panelKey(k, c))
+            continue;
+        else if (c == 'g')
+            return (PracticeAction::Grade);
+        else if (c == 'p')
+            return (PracticeAction::Pick);
+        else if (c == 'r')
+            return (PracticeAction::Random);
+        else if (c == '?')
+            return (PracticeAction::Help);
+        else if (c == 'f')
+            return (PracticeAction::Exit);
+        else if (c == 'q')
+        {
+            std::string answer = ask("Quit the simulator? y/n", false);
+            if (answer == "y" || answer == "Y")
+                return (PracticeAction::Quit);
+        }
+        else if (c == ':')
+        {
+            std::string command = commandLine();
+            if (!command.empty())
+                return (parse_practice_action(command));
+        }
+    }
 }
 
 void DashboardDisplay::practiceCooldown(time_t seconds)
 {
-    term_screen_leave();
-    ModernDisplay::practiceCooldown(seconds);
+    if (!term_screen_active())
+        return (ModernDisplay::practiceCooldown(seconds));
+    cooldownError(seconds);
 }
 
+// ==> The pass stays in the grade panel; what comes next is a box over it:
+// "1" retry, "2" pick, "3" random, "0" leave
 std::string DashboardDisplay::practicePassed(const GradeResult &r)
 {
-    term_screen_leave();
-    return (ModernDisplay::practicePassed(r));
+    if (!term_screen_active())
+        return (ModernDisplay::practicePassed(r));
+    g.has_result = true;
+    g.result = r;
+    g.grading = false;
+    g.page = Page();
+    g.page.on = true;
+    g.page.overlay = true;
+    g.page.title = paint(Color::Success, sym(Sym::Check) + " PASSED");
+    g.page.keys = list_keys(key_hint("esc", "main menu"));
+    std::string tests = r.tests ? std::to_string(r.tests) + "/" + std::to_string(r.tests) + " tests   " : "";
+    g.page.lines.push_back(bold(r.ex_name) + "   " + tests + dim(ordinal(r.tries) + " try"));
+    g.page.lines.push_back(dim("saved in success/practice_ex"));
+    std::vector<Option> o;
+    o.push_back({"1", "Retry", "the same exercise"});
+    o.push_back({"2", "Pick another", "search the list"});
+    o.push_back({"3", "Random", "same exam and level"});
+    o.push_back({"0", "Main menu", "leave Practice"});
+    int cursor = 1;
+    std::string answer = listPick(o, cursor, "0");
+    g.page = Page();
+    return (answer);
 }

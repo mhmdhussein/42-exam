@@ -145,7 +145,8 @@ enum class PracticeAction
     Random,
     Status,
     Help,
-    Exit,
+    Exit, // back to the main menu
+    Quit, // leave the simulator (the Dashboard q key)
     Unknown
 };
 
@@ -210,7 +211,7 @@ public:
     virtual void showStatus(const ExamView &v) = 0;
     virtual void showHelp(bool cheats) = 0;
     virtual Action readCommand(const ExamView &v) = 0; // v: current state, for a live clock
-    virtual bool confirmFinish(void) = 0;
+    virtual bool confirmFinish(bool quit) = 0; // quit: leave the simulator, not only the exam
     virtual void waitEnter(void) = 0;
 
     // grading
@@ -254,7 +255,7 @@ public:
     void showStatus(const ExamView &v);
     void showHelp(bool cheats);
     Action readCommand(const ExamView &v);
-    bool confirmFinish(void);
+    bool confirmFinish(bool quit);
     void waitEnter(void);
 
     bool confirmGrade(const std::string &beta_author);
@@ -309,7 +310,7 @@ public:
     void showStatus(const ExamView &v);
     void showHelp(bool cheats);
     Action readCommand(const ExamView &v);
-    bool confirmFinish(void);
+    bool confirmFinish(bool quit);
     void waitEnter(void);
 
     bool confirmGrade(const std::string &beta_author);
@@ -351,9 +352,9 @@ private:
     ui::Spinner spinner_;
 };
 
-// ==> "Dashboard" style: the whole program on one full screen (display_dashboard.cpp): menus and
-// exam start as pages of one frame, the exam as panels with a live clock and single-key controls.
-// Practice is still Modern's, on the normal screen.
+// ==> "Dashboard" style: the whole program on one full screen (display_dashboard.cpp): menus, exam
+// start and the Practice picker as pages of one frame; the exam and Practice as panels with
+// single-key controls (and a live clock in the exam).
 class DashboardDisplay : public ModernDisplay
 {
 public:
@@ -374,7 +375,7 @@ public:
     void showStatus(const ExamView &v);
     void showHelp(bool cheats);
     Action readCommand(const ExamView &v);
-    bool confirmFinish(void);
+    bool confirmFinish(bool quit);
     void waitEnter(void);
 
     bool confirmGrade(const std::string &beta_author);
@@ -385,7 +386,7 @@ public:
     void showResult(const GradeResult &r);
     void showEnd(const ExamSummary &s);
 
-    // Practice: Modern's screens on the normal screen; the next Dashboard screen comes back full screen
+    // Practice, in the same frame
     bool practiceGuard(const RestoreView &saved);
     int practicePicker(const std::vector<practice_entry> &index, std::string &query);
     void practiceStart(const PracticeView &v);
@@ -404,8 +405,12 @@ private:
     void drawFrame(void);
     void drawPage(const ui::Rect &r); // lines and list of the current page
     void drawGrade(const ui::Rect &r);
+    void drawExamSide(const ui::Rect &head, const ui::Rect &levels);     // left column: exam and levels
+    void drawPracticeSide(const ui::Rect &head, const ui::Rect &levels); // left column: Practice exercise
     std::string listPick(const std::vector<Option> &options, int &cursor, const std::string &back); // Modern's pick() as a page list
     void waitPage(void); // enter goes on
+    bool panelKey(Key k, char c); // subject scrolling and trace keys of the exam and Practice screens
+    std::string commandLine(void); // `:` prompt in the bottom bar, trimmed
     void setMessage(const std::string &text, bool error);
     Key waitKey(char &c); // next key; redraws on clock ticks and resizes meanwhile
     std::string ask(const std::string &question, bool line); // inline prompt in the bottom bar
@@ -427,6 +432,7 @@ int exam_minutes(bool student, int exam_number);
 std::string read_command(const std::string &prompt); // readline until a non-blank line, trimmed
 Action parse_action(const std::string &command); // typed command -> Action
 Action read_action(const std::string &prompt);
+PracticeAction parse_practice_action(const std::string &command); // typed command -> PracticeAction
 PracticeAction read_practice_action(const std::string &prompt);
 int practice_position(const std::vector<practice_entry> &index, const practice_entry &entry); // -1 if absent
 

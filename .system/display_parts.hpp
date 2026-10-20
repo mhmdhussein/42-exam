@@ -27,6 +27,8 @@ const char *style_label(DisplayStyle style);
 // end card: time, cheats, passed levels; then its title, footer and colour
 std::vector<std::string> end_lines(const ExamSummary &s);
 void end_card(const ExamSummary &s, ui::BoxOpts &opts);
+std::string part_label(const practice_entry &e);               // Student / Piscine
+std::string practice_row(const practice_entry &e, int name_width); // plain: name, part, exam, level, ✓
 // content of the result card; sets title, label, footer and colour of opts
 std::vector<std::string> result_lines(const GradeResult &r, ui::BoxOpts &opts, size_t max_block);
 }
