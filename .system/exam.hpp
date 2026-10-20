@@ -35,6 +35,11 @@ exam restore_data(void);
 bool file_exists(std::string path);
 
 void reset_folder(void);
+
+// ==> Thrown by the `finish` command, caught in main() to go back to the main menu
+struct exam_finished
+{
+};
 void sigc(int sig);
 void sigd(void);
 
@@ -70,6 +75,7 @@ public:
     bool clean_all(void);
     void restore_data(void);
     bool start_new_ex(void);
+    void reset_session(void);
     exam &operator=(exam const &src);
     std::map<int, exercise> list_dir();
     std::map<int, exercise> list_ex_lvl;

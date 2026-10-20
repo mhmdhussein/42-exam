@@ -67,6 +67,8 @@ make check-subjects # check every exercise: the reference must pass its tester, 
 make reset  # delete session files: rendu/, subjects/, success/, traces/ and the saved exam (settings are kept)
 ```
 
+The version shown on the login screen comes from the `VERSION` file; `make` rebuilds when it changes.
+
 Choose Piscine or Student part, pick an exam and confirm. Your subject goes in
 `subjects/subject.en.txt`. Write your solution in `rendu/<exercise>/`, then type `grademe` at the
 `examshell>` prompt. If grading fails, the trace is saved in `traces/`.
@@ -87,7 +89,8 @@ Set `NO_COLOR=1` for no colours, or `EXAMSHELL_ASCII=1` for plain ASCII boxes an
 | `status` | Show exam status |
 | `grademe` | Grade the current exercise |
 | `settings` | Open the settings menu |
-| `finish` | Quit the exam (progress is lost) |
+| `finish` | Leave the exam and go back to the main menu (progress is lost) |
+| `exit` / `quit` | Quit the simulator (progress is lost) |
 
 Cheat commands, available only when "Enable cheat commands" is on. Each one counts as a cheat in the end screen:
 

@@ -16,6 +16,11 @@
 #define YELLOW "\e[93m"
 #define REMOVE_LINE "\e[1A\e[K"
 
+// set by the Makefile from the VERSION file
+#ifndef EXAMSHELL_VERSION
+#define EXAMSHELL_VERSION "dev"
+#endif
+
 // ==> Plain data the exam fills and the display reads; the display never changes exam state
 
 struct PassedLevel
@@ -149,7 +154,8 @@ enum class Action
     Status,
     Settings,
     Help,
-    Finish,
+    Finish, // leave the exam, back to the main menu
+    Quit,   // leave the simulator
     NewEx,
     ForceSuccess,
     RemoveGradeTime,
@@ -341,8 +347,11 @@ private:
     ui::Spinner spinner_;
 };
 
+// exam facts, also shown in the exam pickers (exam.cpp)
+int exam_levels(bool student, int exam_number);
+int exam_minutes(bool student, int exam_number);
+
 // shared by the displays
-void play_login(const std::string &username);
 std::string read_command(const std::string &prompt); // readline until a non-blank line, trimmed
 Action read_action(const std::string &prompt);
 PracticeAction read_practice_action(const std::string &prompt);

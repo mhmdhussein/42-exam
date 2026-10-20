@@ -106,8 +106,9 @@ hello  world$
 - `STDIN:` the input file or text, or `(none)`.
 - `EXPECTED` / `GOT`: both outputs through `cat -e`.
 
-Failures before any case runs use a shorter block. The reason is `compile error` (with `GOT:` holding
-the compiler output), `forbidden function: <name>`, or `reference did not compile` (a tester bug):
+Failures before any case runs use a shorter block. The reason is `missing file` (with `GOT:` naming the
+file the student did not hand in), `compile error` (with `GOT:` holding the compiler output),
+`forbidden function: <name>`, or `reference did not compile` (a tester bug):
 
 ```
 === FAILED: forbidden function: strdup ===

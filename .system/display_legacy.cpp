@@ -257,12 +257,6 @@ void LegacyDisplay::showExplanation(void)
 // ==> display connexion animation
 void LegacyDisplay::connexion(const std::string &username)
 {
-    play_login(username);
-}
-
-// ==> Fake examshell login, shared by the displays
-void play_login(const std::string &username)
-{
     system("clear");
     std::cout << RESET;
     std::string examsystem = "examshell";
@@ -275,7 +269,7 @@ void play_login(const std::string &username)
     std::cout << std::endl;
     usleep(600000);
     system("clear");
-    std::cout << BOLD << UNDERLINE << "ExamShell v2.1" << RESET << std::endl
+    std::cout << BOLD << UNDERLINE << "ExamShell v" EXAMSHELL_VERSION << RESET << std::endl
               << std::endl;
     std::cout << BOLD << "login:" << RESET;
     fflush(stdout);
@@ -478,8 +472,10 @@ Action read_action(const std::string &prompt)
         return (Action::Settings);
     if (input == "help")
         return (Action::Help);
-    if (input == "finish" || input == "exit" || input == "quit")
+    if (input == "finish")
         return (Action::Finish);
+    if (input == "exit" || input == "quit")
+        return (Action::Quit);
     if (input == "new_ex")
         return (Action::NewEx);
     if (input == "force_success")

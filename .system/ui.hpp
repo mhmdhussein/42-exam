@@ -58,7 +58,8 @@ struct BoxOpts
     std::string label;  // right of the top border
     std::string footer; // left of the bottom border
     Color color = Color::Box;
-    int width = 0; // outer width, 0 = fit content and the terminal
+    int width = 0;     // outer width, 0 = fit content and the terminal
+    int min_width = 0; // with width 0: never narrower than this (screens shown together line up)
 };
 
 // ==> Rounded box indented by 2, one string with a newline after each row

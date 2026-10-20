@@ -180,6 +180,15 @@ static std::string untab(const std::string &s)
     return (out);
 }
 
+// ==> Box options for the exam and Practice cards: one minimum width, so boxes shown one
+// after another (status, result, settings...) have their right edges lined up
+static ui::BoxOpts card(void)
+{
+    ui::BoxOpts opts;
+    opts.min_width = 62;
+    return (opts);
+}
+
 static std::string footer_keys(const std::string &keys)
 {
     return ("  " + dim(keys));
@@ -254,6 +263,13 @@ std::string ModernDisplay::pick(const std::string &header, const std::vector<Opt
     }
 }
 
+// 4 levels · 3h
+static std::string exam_hint(bool student, int exam_number)
+{
+    int levels = exam_levels(student, exam_number);
+    return (std::to_string(levels) + (levels == 1 ? " level " : " levels ") + dot() + " " + duration(exam_minutes(student, exam_number) * 60L));
+}
+
 static std::string menu_header(const std::string &where)
 {
     std::string line = bold("42 EXAM") + "  " + dim(dot() + "  " + where);
@@ -278,7 +294,7 @@ std::string ModernDisplay::studMenu(bool invalid)
 {
     std::vector<Option> o;
     for (int i = 2; i <= 6; i++)
-        o.push_back({std::to_string(i), "Exam rank 0" + std::to_string(i), ""});
+        o.push_back({std::to_string(i), "Exam rank 0" + std::to_string(i), exam_hint(true, i)});
     std::string header = menu_header("student part");
     if (invalid)
         header += "  " + paint(Color::Failure, sym(Sym::Cross) + " pick 2-6, or 0 to go back") + "\n";
@@ -290,7 +306,7 @@ std::string ModernDisplay::piscineMenu(bool invalid)
 {
     std::vector<Option> o;
     for (int i = 1; i <= 4; i++)
-        o.push_back({std::to_string(i), "Exam week 0" + std::to_string(i), ""});
+        o.push_back({std::to_string(i), "Exam week 0" + std::to_string(i), exam_hint(false, i)});
     std::string header = menu_header("piscine part");
     if (invalid)
         header += "  " + paint(Color::Failure, sym(Sym::Cross) + " pick 1-4, or 0 to go back") + "\n";
@@ -333,57 +349,61 @@ std::string ModernDisplay::settingsMenu(const SettingsView &s)
     if (settings_cursor_ < 0 || settings_cursor_ >= count)
         settings_cursor_ = 0;
 
+    // the exam calls this again after each change, so raw mode stays on until the menu is left:
+    // switching modes per key would drop keys typed ahead and make the cursor flicker
     bool raw = term_raw_enter();
-    std::vector<std::string> lines(1, "");
-    for (int i = 0; i < count; i++)
+    while (1)
     {
-        if (!raw)
-            lines.push_back(dim(rows[i].key + ".") + " " + ui::pad(rows[i].label, 27) + rows[i].value);
-        else if (i == settings_cursor_)
-            lines.push_back(highlight(sym(Sym::Prompt) + " " + ui::pad(rows[i].label, 27) + ui::pad(rows[i].plain, 18)));
-        else
-            lines.push_back("  " + ui::pad(rows[i].label, 27) + rows[i].value);
-    }
-    lines.push_back("");
-    ui::BoxOpts opts;
-    opts.title = bold("Settings");
-    std::string arrows = uni("↑↓", "up/down") + " move " + dot() + " " + uni("←→", "left/right") + " / space change " + dot() + " esc save";
-    if (raw)
-        opts.footer = dim(arrows);
-    // the exam calls this once per key: the first call clears, the next ones repaint in place
-    std::string frame = "\n" + ui::box(lines, opts) + "\n";
-    std::cout << repaint(settings_drawn_, frame);
-    settings_drawn_ = count_lines(frame);
+        std::vector<std::string> lines(1, "");
+        for (int i = 0; i < count; i++)
+        {
+            if (!raw)
+                lines.push_back(dim(rows[i].key + ".") + " " + ui::pad(rows[i].label, 27) + rows[i].value);
+            else if (i == settings_cursor_)
+                lines.push_back(highlight(sym(Sym::Prompt) + " " + ui::pad(rows[i].label, 27) + ui::pad(rows[i].plain, 18)));
+            else
+                lines.push_back("  " + ui::pad(rows[i].label, 27) + rows[i].value);
+        }
+        lines.push_back("");
+        ui::BoxOpts opts = card();
+        opts.title = bold("Settings");
+        std::string arrows = uni("↑↓", "up/down") + " move " + dot() + " " + uni("←→", "left/right") + " / space change " + dot() + " esc save";
+        if (raw)
+            opts.footer = dim(arrows);
+        // the first frame clears the screen, the next ones repaint it in place
+        std::string frame = "\n" + ui::box(lines, opts) + "\n";
+        std::cout << repaint(settings_drawn_, frame);
+        settings_drawn_ = count_lines(frame);
 
-    if (!raw)
-    {
-        settings_drawn_ = -1;
-        std::cout << "  number to change, enter to save: " << std::flush;
-        std::string input = trim(read_line());
-        return (input.empty() ? "0" : input);
+        if (!raw)
+        {
+            settings_drawn_ = -1;
+            std::cout << "  number to change, enter to save: " << std::flush;
+            std::string input = trim(read_line());
+            return (input.empty() ? "0" : input);
+        }
+        std::cout << std::flush;
+        char c = 0;
+        Key k = read_key(c);
+        const Row &row = rows[settings_cursor_];
+        if (k == Key::Up || (k == Key::Char && c == 'k'))
+            settings_cursor_ = (settings_cursor_ + count - 1) % count;
+        else if (k == Key::Down || (k == Key::Char && c == 'j'))
+            settings_cursor_ = (settings_cursor_ + 1) % count;
+        else if (k == Key::Left)
+            return (row.key == "3" ? "-3" : row.key);
+        else if (k == Key::Right || k == Key::Enter || (k == Key::Char && c == ' '))
+            return (row.key);
+        else if (k == Key::Esc || (k == Key::Char && (c == 'q' || c == '0')))
+        {
+            term_raw_restore();
+            settings_drawn_ = -1;
+            std::cout << clear_screen() << std::flush;
+            return ("0");
+        }
+        else if (k == Key::Char && c >= '1' && c <= '5')
+            return (std::string(1, c));
     }
-    std::cout << std::flush;
-    char c = 0;
-    Key k = read_key(c);
-    term_raw_restore();
-    const Row &row = rows[settings_cursor_];
-    if (k == Key::Up || (k == Key::Char && c == 'k'))
-        settings_cursor_ = (settings_cursor_ + count - 1) % count;
-    else if (k == Key::Down || (k == Key::Char && c == 'j'))
-        settings_cursor_ = (settings_cursor_ + 1) % count;
-    else if (k == Key::Left)
-        return (row.key == "3" ? "-3" : row.key);
-    else if (k == Key::Right || k == Key::Enter || (k == Key::Char && c == ' '))
-        return (row.key);
-    else if (k == Key::Esc || (k == Key::Char && (c == 'q' || c == '0')))
-    {
-        settings_drawn_ = -1;
-        std::cout << clear_screen() << std::flush;
-        return ("0");
-    }
-    else if (k == Key::Char && c >= '1' && c <= '5')
-        return (std::string(1, c));
-    return (""); // redraw
 }
 
 // ==> Saved exam found at startup: "1" to restore, "2" to erase
@@ -428,10 +448,10 @@ void ModernDisplay::showExplanation(void)
     lines.push_back("  fail and you retry the same exercise for fewer points.");
     lines.push_back(paint(Color::Current, sym(Sym::Current)) + " Each failed try makes you wait longer before the next grade.");
     lines.push_back("");
-    lines.push_back(paint(Color::Warning, uni("⚠", "!") + " Not the real 42 exam and not made by 42."));
+    lines.push_back(paint(Color::Warning, "! Not the real 42 exam and not made by 42."));
     lines.push_back(dim("  A private, offline exam simulator."));
     lines.push_back("");
-    ui::BoxOpts opts;
+    ui::BoxOpts opts = card();
     opts.title = bold("How it works");
     std::cout << clear_screen() << std::endl
               << ui::box(lines, opts) << std::endl
@@ -439,14 +459,66 @@ void ModernDisplay::showExplanation(void)
     read_line();
 }
 
+// ==> Login animation: the login and a masked password type into an examshell card,
+// a spinner connects, then a check
 void ModernDisplay::connexion(const std::string &username)
 {
-    play_login(username);
+    // raw mode hides the cursor and keeps keys pressed meanwhile off the screen;
+    // Ctrl+C restores it like in the menus
+    bool raw = term_raw_enter();
+    int drawn = -1;
+    auto frame = [&](const std::string &login, const std::string &password, const std::string &footer) {
+        std::vector<std::string> lines;
+        lines.push_back("");
+        lines.push_back(dim(ui::pad("login", 10)) + bold(login));
+        lines.push_back(dim(ui::pad("password", 10)) + password);
+        lines.push_back("");
+        ui::BoxOpts opts = card();
+        opts.title = paint(Color::Warning, "examshell");
+        opts.label = dim("v" EXAMSHELL_VERSION);
+        opts.footer = footer;
+        std::string out = "\n" + ui::box(lines, opts);
+        std::cout << repaint(drawn, out) << std::flush;
+        drawn = count_lines(out);
+    };
+    std::string caret = paint(Color::Current, uni("█", "_"));
+
+    std::string login;
+    frame("", "", "");
+    usleep(500000);
+    for (size_t i = 0; i < username.size(); i++)
+    {
+        login += username[i];
+        frame(login + caret, "", "");
+        usleep(90000);
+    }
+    srand(time(NULL));
+    int password_size = rand() % 10 + 4;
+    std::string password;
+    for (int i = 0; i < password_size; i++)
+    {
+        password += uni("•", "*");
+        frame(login, paint(Color::Dim, password) + caret, "");
+        usleep(70000);
+    }
+    static const char *dots[] = {"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"};
+    static const char *ascii[] = {"|", "/", "-", "\\"};
+    for (int f = 0; f < 14; f++)
+    {
+        std::string spin = term_unicode() ? dots[f % 10] : ascii[f % 4];
+        frame(login, dim(password), paint(Color::Current, spin) + dim(" connecting" + sym(Sym::Ellipsis)));
+        usleep(90000);
+    }
+    frame(login, dim(password), paint(Color::Success, sym(Sym::Check) + " connected"));
+    std::cout << std::endl;
+    usleep(400000);
+    if (raw)
+        term_raw_restore();
 }
 
 void ModernDisplay::showIntro(const std::string &username, bool student, int exam_number, int level, int time_max)
 {
-    std::cout << "  " << paint(Color::Success, sym(Sym::Check)) << " connected as " << bold(username) << std::endl
+    std::cout << "  Welcome, " << bold(username) << std::endl
               << std::endl;
     std::cout << "  " << bold(exam_title(student, exam_number)) << dim("  " + dot() + "  ") << paint(Color::Mode, "REAL") << dim(" mode  " + dot() + "  ")
               << "level " << level << dim("  " + dot() + "  ") << duration(time_max * 60L) << std::endl;
@@ -469,7 +541,7 @@ void ModernDisplay::showStatus(const ExamView &v)
     if (v.cooldown_until > now)
         next = paint(Color::Warning, "in " + wait_time(v.cooldown_until - now));
     head.push_back(ui::pad(paint(Color::Warning, sym(Sym::Clock)) + "  " + bold(clock_long(v.end_time - now)) + " left", 24) + paint(Color::Current, sym(Sym::Cooldown)) + " next grade: " + next);
-    ui::BoxOpts opts;
+    ui::BoxOpts opts = card();
     opts.title = bold(exam_title(v.student, v.exam_number));
     opts.label = v.real_mode ? paint(Color::Mode, "REAL") : paint(Color::Warning, "TEST");
     std::cout << std::endl << ui::box(head, opts) << std::endl;
@@ -484,10 +556,10 @@ void ModernDisplay::showStatus(const ExamView &v)
                 name = v.passed[i].name;
                 tries = tries_text(v.passed[i].tries + 1);
             }
-        std::cout << "   " << paint(Color::Success, sym(Sym::Check)) << "  lvl " << ui::pad(std::to_string(l), 3) << " " << (tries.empty() ? name : ui::pad(name, 18) + " " + dim(tries)) << std::endl;
+        std::cout << "   " << paint(Color::Success, sym(Sym::Check)) << "  lvl " << ui::pad(std::to_string(l), 3) << " " << (tries.empty() ? name : ui::pad(name, 20) + " " + dim(tries)) << std::endl;
     }
     std::string failed = v.tries ? " " + dot() + " " + std::to_string(v.tries) + " failed" : "";
-    std::cout << "   " << paint(Color::Current, sym(Sym::Current)) << "  lvl " << ui::pad(std::to_string(v.level), 3) << " " << ui::pad(bold(v.ex_name), 18) << " " << paint(Color::Current, "current" + failed) << std::endl;
+    std::cout << "   " << paint(Color::Current, sym(Sym::Current)) << "  lvl " << ui::pad(std::to_string(v.level), 3) << " " << ui::pad(bold(v.ex_name), 20) << " " << paint(Color::Current, "current" + failed) << std::endl;
     for (int l = v.level + 1; l < v.level_max; l++)
         std::cout << "   " << dim(sym(Sym::Pending) + "  lvl " + ui::pad(std::to_string(l), 3) + " ???") << std::endl;
 
@@ -506,7 +578,8 @@ void ModernDisplay::showHelp(bool cheats)
     rows.push_back({paint(Color::Success, "status"), "show the exam status"});
     rows.push_back({paint(Color::Success, "settings"), "open the settings (display style applies right away)"});
     rows.push_back({paint(Color::Success, "help"), "show this help"});
-    rows.push_back({paint(Color::Success, "finish"), "leave the exam (progress is lost)"});
+    rows.push_back({paint(Color::Success, "finish"), "leave the exam, back to the main menu (progress is lost)"});
+    rows.push_back({paint(Color::Success, "exit"), "quit the simulator (progress is lost)"});
     size_t base = rows.size();
     if (cheats)
     {
@@ -561,7 +634,7 @@ bool ModernDisplay::confirmGrade(const std::string &beta_author)
 {
     if (!beta_author.empty())
     {
-        std::cout << "  " << paint(Color::Warning, uni("⚠", "!") + " beta exercise") << " by " << paint(Color::Warning, beta_author)
+        std::cout << "  " << paint(Color::Warning, "! beta exercise") << " by " << paint(Color::Warning, beta_author)
                   << dim(": if you find a bug, fix it in the exercise folder (see the README).") << std::endl;
     }
     std::cout << "  Submit now? A failed try means the same exercise for fewer points. " << dim("[y/N] ") << std::flush;
@@ -618,7 +691,7 @@ static void add_block(std::vector<std::string> &lines, const std::string &label,
 void ModernDisplay::showResult(const GradeResult &r)
 {
     std::vector<std::string> lines;
-    ui::BoxOpts opts;
+    ui::BoxOpts opts = card();
     if (r.passed)
     {
         next_step_ = r.level >= r.level_max ? "see your results" : "next exercise";
@@ -688,13 +761,13 @@ void ModernDisplay::showEnd(const ExamSummary &s)
         lines.push_back(paint(Color::Success, sym(Sym::Check)) + " lvl " + ui::pad(std::to_string(row.level), 2) + " " + ui::pad(row.name.empty() ? unknown : row.name, 18) + " " + ui::pad(row.tries < 0 ? unknown : tries_text(row.tries), 9) + dim(ui::pad(row.seconds < 0 ? unknown : duration(row.seconds), 7, ui::Align::Right)));
     }
     lines.push_back("");
-    ui::BoxOpts opts;
+    ui::BoxOpts opts = card();
     Color c = s.cheat_count ? Color::Warning : Color::Success;
     opts.title = paint(Color::Bold, paint(c, exam_title(s.student, s.exam_number) + " " + dot() + " " + std::to_string(s.grade) + "/100"));
     if (s.cheat_count)
         opts.footer = dim("thanks for studying, " + s.username);
     else
-        opts.footer = dim("nice work, " + s.username + " " + dot() + " " + uni("❤", "<3"));
+        opts.footer = dim("nice work, " + s.username + " " + dot() + " " + uni("♥", "<3"));
     std::cout << std::endl << ui::box(lines, opts) << std::endl;
 }
 
@@ -914,7 +987,7 @@ void ModernDisplay::practiceStatus(const PracticeView &v, bool clear)
         next = paint(Color::Current, sym(Sym::Cooldown)) + " next grade: " + (v.cooldown_until > now ? paint(Color::Warning, "in " + wait_time(v.cooldown_until - now)) : paint(Color::Success, "now"));
     std::string tries = v.tries ? paint(Color::Failure, std::to_string(v.tries) + " failed") : dim("no tries yet");
     lines.push_back(ui::pad(tries, 18) + next);
-    ui::BoxOpts opts;
+    ui::BoxOpts opts = card();
     opts.title = paint(Color::Bold, paint(Color::Warning, "PRACTICE"));
     opts.label = dim("no timer " + dot() + " no grade");
 
@@ -960,7 +1033,7 @@ std::string ModernDisplay::practicePassed(const GradeResult &r)
     std::vector<std::string> lines;
     std::string tests = r.tests ? std::to_string(r.tests) + "/" + std::to_string(r.tests) + " tests   " : "";
     lines.push_back(bold(r.ex_name) + "   " + tests + dim(ordinal(r.tries) + " try"));
-    ui::BoxOpts opts;
+    ui::BoxOpts opts = card();
     opts.title = paint(Color::Success, sym(Sym::Check) + " PASSED");
     opts.footer = dim("saved in success/practice_ex");
     opts.color = Color::Success;

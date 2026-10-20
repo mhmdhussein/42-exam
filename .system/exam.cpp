@@ -45,40 +45,42 @@ std::string exam::get_path(void)
     return (path_exam);
 }
 
-// ==> Set max level for an exam
-void exam::set_max_lvl(void)
+// ==> Number of levels of an exam (also shown in the exam pickers)
+int exam_levels(bool student, int exam_number)
 {
     if (student)
     {
         if (exam_number == 2)
-            level_max = 4;
-        else if (exam_number == 3)
-            level_max = 2;
-        else if (exam_number == 4)
-            level_max = 2;
-        else if (exam_number == 5)
-            level_max = 2;
-        else if (exam_number == 6)
-            level_max = 1;
+            return (4);
+        if (exam_number == 6)
+            return (1);
+        return (2);
     }
-    else if (exam_number == 3 || exam_number == 4)
-        level_max = 4;
-    else
-        level_max = 8;
+    if (exam_number == 3 || exam_number == 4)
+        return (4);
+    return (8);
+}
+
+// ==> Length of an exam in minutes
+int exam_minutes(bool student, int exam_number)
+{
+    if (student)
+        return (180);
+    if (exam_number == 4)
+        return (480);
+    return (240);
+}
+
+// ==> Set max level for an exam
+void exam::set_max_lvl(void)
+{
+    level_max = exam_levels(student, exam_number);
 }
 
 // ==> Set max hrs for exam (3 or 4)
 void exam::set_max_time(void)
 {
-    if (student)
-        time_max = 180;
-    else
-    {
-        if (exam_number == 4)
-            time_max = 480;
-        else
-            time_max = 240;
-    }
+    time_max = exam_minutes(student, exam_number);
 }
 
 // ==> First menu asking examrank number
@@ -133,7 +135,7 @@ void exam::ask_param(void)
 }
 
 // CONSTRUCTOR/OPERATOR/GETTER/SETTER
-exam::exam(void) : student(false), level_max(0), display(NULL), using_cheatcode(0), exam_grade(0), level(0), failures(0), backup(false)
+exam::exam(void) : current_ex(NULL), student(false), level_max(0), display(NULL), using_cheatcode(0), exam_grade(0), level(0), failures(0), backup(false)
 {
     reelmode = true;
     waiting_time = true;
@@ -170,6 +172,26 @@ exam::exam(exam const &) : display(NULL) {}
 exam::~exam(void)
 {
     delete display;
+}
+
+// ==> Forget the exam that was just left, before choosing a new one
+void exam::reset_session(void)
+{
+    level = 0;
+    level_per_ex = 0;
+    level_per_ex_save = 0;
+    exam_grade = 0;
+    failures = 0;
+    using_cheatcode = 0;
+    waiting_time = true;
+    reelmode = true;
+    backup = false;
+    changex = 0;
+    lvl_ex.clear();
+    list_ex_lvl.clear();
+    delete current_ex;
+    current_ex = NULL;
+    last_result = GradeResult();
 }
 
 void exam::up_lvl(void)
