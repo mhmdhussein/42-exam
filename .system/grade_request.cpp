@@ -90,7 +90,8 @@ void exam::end_exam()
         summary.rows.push_back(row);
     }
     display->showEnd(summary);
-    exit(0);
+    display->waitEnter();
+    throw exam_finished(); // caught in main(), back to the main menu
 }
 
 // ==> GradeMe function call by entering `grademe` into prompt

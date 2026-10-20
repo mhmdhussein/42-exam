@@ -415,7 +415,7 @@ void LegacyDisplay::showHelp(bool cheats)
     }
 }
 
-Action LegacyDisplay::readCommand(time_t)
+Action LegacyDisplay::readCommand(const ExamView &)
 {
     return (read_action("\e[93mexamshell\e[0m> "));
 }
@@ -461,9 +461,9 @@ PracticeAction read_practice_action(const std::string &prompt)
     return (PracticeAction::Unknown);
 }
 
-Action read_action(const std::string &prompt)
+// ==> Typed command -> Action; also used by the command line of the Dashboard
+Action parse_action(const std::string &input)
 {
-    std::string input = read_command(prompt);
     if (input == "grademe")
         return (Action::Grade);
     if (input == "status")
@@ -485,6 +485,11 @@ Action read_action(const std::string &prompt)
     if (input == "gradenow")
         return (Action::GradeNow);
     return (Action::Unknown);
+}
+
+Action read_action(const std::string &prompt)
+{
+    return (parse_action(read_command(prompt)));
 }
 
 bool LegacyDisplay::confirmFinish(void)

@@ -4,6 +4,7 @@
 #include <vector>
 #include <ctime>
 #include "ui.hpp"
+#include "term.hpp"
 
 #define BOLD "\e[1m"
 #define RESET "\e[0m"
@@ -96,7 +97,8 @@ struct ExamSummary
     std::string username;
 };
 
-enum class DisplayStyle { Modern = 0, Legacy = 1, Exact = 2 };
+enum class DisplayStyle { Modern = 0, Legacy = 1, Exact = 2, Dashboard = 3 };
+const int DISPLAY_STYLES = 4;
 
 struct SettingsView
 {
@@ -207,7 +209,7 @@ public:
     // exam prompt
     virtual void showStatus(const ExamView &v) = 0;
     virtual void showHelp(bool cheats) = 0;
-    virtual Action readCommand(time_t end_time) = 0;
+    virtual Action readCommand(const ExamView &v) = 0; // v: current state, for a live clock
     virtual bool confirmFinish(void) = 0;
     virtual void waitEnter(void) = 0;
 
@@ -251,7 +253,7 @@ public:
 
     void showStatus(const ExamView &v);
     void showHelp(bool cheats);
-    Action readCommand(time_t end_time);
+    Action readCommand(const ExamView &v);
     bool confirmFinish(void);
     void waitEnter(void);
 
@@ -306,7 +308,7 @@ public:
 
     void showStatus(const ExamView &v);
     void showHelp(bool cheats);
-    Action readCommand(time_t end_time);
+    Action readCommand(const ExamView &v);
     bool confirmFinish(void);
     void waitEnter(void);
 
@@ -347,12 +349,58 @@ private:
     ui::Spinner spinner_;
 };
 
+// ==> "Dashboard" style: the exam on one full screen with panels, a live clock and single-key
+// controls (display_dashboard.cpp). Everything outside the exam (menus, Practice) is Modern's.
+class DashboardDisplay : public ModernDisplay
+{
+public:
+    DashboardDisplay(void);
+    ~DashboardDisplay(void);
+
+    std::string settingsMenu(const SettingsView &s);
+
+    void showStatus(const ExamView &v);
+    void showHelp(bool cheats);
+    Action readCommand(const ExamView &v);
+    bool confirmFinish(void);
+    void waitEnter(void);
+
+    bool confirmGrade(const std::string &beta_author);
+    void cooldownError(time_t seconds);
+    void gradingStarted(void);
+    void testerStarted(const std::string &name);
+    void testerFinished(void);
+    void showResult(const GradeResult &r);
+    void showEnd(const ExamSummary &s);
+
+    void message(Msg m);
+    void error(const std::string &text);
+
+private:
+    bool enter(void); // full screen on; false = this exam falls back to Modern
+    void draw(void);  // whole frame into screen_, then flush
+    void drawFrame(void);
+    void drawGrade(const ui::Rect &r);
+    void setMessage(const std::string &text, bool error);
+    Key waitKey(char &c); // next key; redraws on clock ticks and resizes meanwhile
+    std::string ask(const std::string &question, bool line); // inline prompt in the bottom bar
+    void scrollSubject(int delta);
+    void showTrace(void);
+    void spin(void);
+
+    ui::Screen screen_;
+    std::mutex draw_mutex_; // screen_ is drawn by the main thread and the grading spinner
+    std::thread spinner_thread_;
+    std::atomic<bool> spinning_;
+};
+
 // exam facts, also shown in the exam pickers (exam.cpp)
 int exam_levels(bool student, int exam_number);
 int exam_minutes(bool student, int exam_number);
 
 // shared by the displays
 std::string read_command(const std::string &prompt); // readline until a non-blank line, trimmed
+Action parse_action(const std::string &command); // typed command -> Action
 Action read_action(const std::string &prompt);
 PracticeAction read_practice_action(const std::string &prompt);
 int practice_position(const std::vector<practice_entry> &index, const practice_entry &entry); // -1 if absent

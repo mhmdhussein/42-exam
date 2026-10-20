@@ -41,9 +41,9 @@ void exam::settings_menu(void)
         if (input == "2")
             setting_dcc = !setting_dcc;
         if (input == "3")
-            setting_style = (DisplayStyle)(((int)setting_style + 1) % 3);
+            setting_style = (DisplayStyle)(((int)setting_style + 1) % DISPLAY_STYLES);
         if (input == "-3")
-            setting_style = (DisplayStyle)(((int)setting_style + 2) % 3);
+            setting_style = (DisplayStyle)(((int)setting_style + DISPLAY_STYLES - 1) % DISPLAY_STYLES);
         if (input == "4")
             setting_anim = !setting_anim;
         if (input == "5")

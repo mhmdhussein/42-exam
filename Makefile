@@ -10,7 +10,7 @@ CXXFLAGS += -DEXAMSHELL_VERSION='"$(or $(VERSION),dev)"'
 SRCS = .system/exercise.cpp .system/main.cpp .system/menu.cpp .system/exam.cpp \
        .system/utils.cpp .system/grade_request.cpp .system/data_persistence.cpp \
        .system/practice.cpp .system/display_legacy.cpp .system/display_examshell.cpp .system/display_modern.cpp \
-       .system/term.cpp .system/ui.cpp
+       .system/display_dashboard.cpp .system/term.cpp .system/ui.cpp .system/ui_screen.cpp
 OBJDIR = .system/obj
 OBJS = $(SRCS:.system/%.cpp=$(OBJDIR)/%.o)
 
@@ -24,7 +24,7 @@ build: $(NAME)
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) $(LDLIBS) -o $(NAME)
 
-$(OBJDIR)/%.o: .system/%.cpp .system/exam.hpp .system/exercise.hpp .system/display.hpp .system/term.hpp .system/ui.hpp $(wildcard VERSION)
+$(OBJDIR)/%.o: .system/%.cpp .system/exam.hpp .system/exercise.hpp .system/display.hpp .system/display_parts.hpp .system/term.hpp .system/ui.hpp $(wildcard VERSION)
 	@mkdir -p $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 

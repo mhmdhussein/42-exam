@@ -1,4 +1,5 @@
 #include "exam.hpp"
+#include "term.hpp"
 
 exercise::exercise(void) {
     this->name = "UNKNOWN";
@@ -98,6 +99,7 @@ exercise *randomize_exercise(std::map<int, exercise> list, bool remove_success)
     std::map<int, exercise>::iterator it = list.begin();
     if (list.size() == 0)
     {
+        term_screen_leave();
         std::cout << "Error: all exercises for this level have been done" << std::endl;
         std::cout << "Please set to" << RED << BOLD << " OFF " << RESET << "option 1 in settings." << std::endl;
         std::cout << "Or edit/delete your success/success_ex file" << std::endl;
