@@ -198,6 +198,82 @@ void text(Screen &s, const Rect &r, const std::vector<std::string> &lines, int s
     }
 }
 
+Rect frame(Screen &s, const FrameOpts &o)
+{
+    int W = s.width(), H = s.height();
+    Rect head = {0, 0, W, 3};
+    Rect content = {0, 2, W, H - 3}; // shares the title panel's bottom border, leaves the key bar
+    panel(s, head, o.title, o.label, Color::Box);
+    int in_w = W - 4;
+    int right_w = display_width(o.line_right);
+    s.put(2, 1, truncate(o.line, std::max(in_w - right_w - 1, 1)));
+    if (right_w > 0)
+        s.put(W - 2 - right_w, 1, o.line_right);
+    panel(s, content, o.panel_title, o.panel_label, o.color);
+    std::string jc = esc(o.color), end = reset();
+    s.put(0, 2, jc + border(Border::TeeRight) + end);
+    s.put(W - 1, 2, jc + border(Border::TeeLeft) + end);
+    return (Rect{3, 4, W - 6, content.h - 4}); // a blank row and 3 columns inside the border
+}
+
+void key_bar(Screen &s, const std::string &left, const std::string &right)
+{
+    int W = s.width(), H = s.height();
+    std::string r = right.empty() ? "" : right + " ";
+    int right_w = display_width(r);
+    s.put(1, H - 1, truncate(left, std::max(W - right_w - 3, 1)));
+    if (right_w > 0)
+        s.put(W - right_w, H - 1, r);
+}
+
+std::string highlight(const std::string &s)
+{
+    if (!term_color())
+        return (s);
+    return ("\e[30;102m" + s + "\e[0m");
+}
+
+// ==> Same columns as Modern's menus: "     1   label" and "  [ ▸ 1   label ]"
+std::vector<std::string> list_lines(const std::vector<ListRow> &rows, int cursor)
+{
+    std::vector<std::string> lines;
+    for (int i = 0; i < (int)rows.size(); i++)
+    {
+        if (i == cursor)
+            lines.push_back("  " + highlight(" " + sym(Sym::Prompt) + " " + rows[i].plain + " "));
+        else
+            lines.push_back("     " + rows[i].normal);
+    }
+    return (lines);
+}
+
+int list_key(const std::vector<ListRow> &rows, int &cursor, Key k, char c, bool can_back)
+{
+    int count = rows.size();
+    if (count == 0)
+        return ((k == Key::Esc || (k == Key::Char && c == 'q')) && can_back ? LIST_BACK : LIST_NONE);
+    if (cursor < 0 || cursor >= count)
+        cursor = 0;
+    if (k == Key::Up || (k == Key::Char && c == 'k'))
+        cursor = (cursor + count - 1) % count;
+    else if (k == Key::Down || (k == Key::Char && c == 'j'))
+        cursor = (cursor + 1) % count;
+    else if (k == Key::Enter)
+        return (cursor);
+    else if ((k == Key::Esc || (k == Key::Char && c == 'q')) && can_back)
+        return (LIST_BACK);
+    else if (k == Key::Char)
+    {
+        for (int i = 0; i < count; i++)
+            if (rows[i].key == std::string(1, c))
+            {
+                cursor = i;
+                return (i);
+            }
+    }
+    return (LIST_NONE);
+}
+
 // ==> Byte offset after `cols` characters of a plain string
 static size_t cut_at(const std::string &s, int cols)
 {

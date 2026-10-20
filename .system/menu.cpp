@@ -13,7 +13,8 @@ int exam::stud_or_swim(void)
             settings_menu();
         else if (choice == "q")
         {
-            system("clear");
+            if (!term_screen_active()) // the Dashboard leaves its full screen at exit
+                system("clear");
             exit(0);
         }
         else if (choice != "1" && choice != "2" )

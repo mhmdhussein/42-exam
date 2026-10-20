@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <chrono>
 #include <sys/time.h>
+#include <termios.h>
+#include <unistd.h>
 
 using ui::Color;
 using ui::Sym;
@@ -12,10 +14,11 @@ using ui::paint;
 using ui::sym;
 using namespace modern;
 
-// ==> Dashboard: the exam on one full screen.
-// Rules: raw mode stays on for the whole dashboard (term_screen_enter/leave), the screen is
-// only drawn from the main loop (waitKey) and the grading spinner, both under draw_mutex_,
-// and it is left (term_screen_leave) before any screen that is not part of it.
+// ==> Dashboard: the whole program on one full screen.
+// Rules: the first Dashboard screen goes full screen (term_screen_enter) and raw mode stays on
+// until the program quits (dashboard_exit, or sigc/sigd on a signal). The screen is only drawn
+// from the key loop (waitKey), the login animation and the grading spinner, under draw_mutex_.
+// Only Practice (Modern's screens for now) and another display style leave it before then.
 
 static const int MIN_WIDTH = 80;
 static const int MIN_HEIGHT = 24;
@@ -29,13 +32,43 @@ enum class Ask
     Enter  // enter only
 };
 
+// ==> A screen outside the exam panels: menus, exam start, end summary, Settings. Drawn in the
+// page frame (title panel, content panel, key bar), or as a box over the exam (overlay).
+struct Page
+{
+    bool on = false;
+    bool overlay = false;
+    bool end = false; // the end summary: waitEnter waits on it
+    std::string where; // title panel: offline simulator · where
+    std::string title; // content panel
+    std::string label;
+    Color color = Color::Box;
+    std::vector<std::string> lines;  // above the list
+    std::vector<ui::ListRow> rows;   // list, none when empty
+    int cursor = 0;
+    std::vector<std::string> after;  // below the list
+    std::string keys;                // key bar
+};
+
 // ==> What the dashboard shows. The exam creates a new display at every level and after
 // Settings, so this outlives the DashboardDisplay objects.
 struct DashState
 {
+    ui::Screen screen;
+    bool started = false;  // went full screen once: the size check is done
+    bool fallback = false; // no terminal or too small at the start: Modern for the whole run
+
+    Page page;
+    bool in_exam = false; // the exam panels are under the page (Settings is an overlay then)
+    int start_cursor = 1;
+    int part_cursor = 0;
+    int settings_cursor = 0;
+
+    bool ended = false; // an exam ended and no other started: its summary is printed at quit
+    ExamSummary summary;
+
     ExamView view;
     std::string key; // exam and exercise the panels below belong to
-    time_t fallback_end = -1; // end_time of the exam that fell back to Modern
 
     std::vector<std::string> subject; // lines of subjects/subject.en.txt
     int subject_scroll = 0;
@@ -50,7 +83,6 @@ struct DashState
 
     std::string msg; // bottom bar message, coloured
     time_t msg_until = 0;
-    bool after_settings = false; // Settings left the full screen: keep its message for the next frame
 
     Ask ask = Ask::None;
     std::string question;
@@ -70,6 +102,9 @@ static void set_view(const ExamView &v)
 {
     std::string key = std::to_string(v.end_time) + " " + std::to_string(v.level) + " " + v.ex_name;
     g.view = v;
+    g.page = Page();
+    g.in_exam = true;
+    g.ended = false;
     if (key == g.key)
         return;
     g.key = key;
@@ -128,12 +163,20 @@ static std::string msg_text(Msg m)
         return (dim("grading cancelled"));
     case Msg::SettingsSaved:
         return (paint(Color::Success, sym(Sym::Check)) + " settings saved");
+    case Msg::BackupOpenError:
+        return (cross + "cannot open the saved exam");
+    case Msg::RestoringToken:
+        return (dim("restoring the saved exam" + sym(Sym::Ellipsis)));
+    case Msg::TokenDeleted:
+        return (dim("saved exam erased"));
+    case Msg::PracticeNoExercises:
+        return (cross + "no exercise found in .subjects/");
     default:
         return ("");
     }
 }
 
-DashboardDisplay::DashboardDisplay(void) : spinning_(false)
+DashboardDisplay::DashboardDisplay(void) : screen_(g.screen), spinning_(false)
 {
 }
 
@@ -145,25 +188,148 @@ DashboardDisplay::~DashboardDisplay(void)
         spinner_thread_.join();
 }
 
-// ==> Full screen for this exam, or false when it falls back to Modern (no terminal,
-// smaller than 80x24 at the start, or the full screen failed)
+// ==> Normal quit (`q` in the main menu, `exit` in the exam): back to the normal screen, and the
+// summary of an exam that just ended stays in the scrollback. After a signal, sigc/sigd have
+// already left the full screen, so nothing is printed.
+static void dashboard_exit(void)
+{
+    if (!term_screen_active())
+        return;
+    term_screen_leave();
+    if (!g.ended)
+        return;
+    ui::BoxOpts opts;
+    end_card(g.summary, opts);
+    opts.color = Color::Box;
+    std::cout << std::endl << ui::box(end_lines(g.summary), opts) << std::flush;
+}
+
+// ==> Full screen, or false when the program falls back to Modern: no terminal or smaller than
+// 80x24 at the first Dashboard screen, or the full screen failed. Later calls (back from
+// Practice) enter it again whatever the size: a small window gets the "bigger" message.
 bool DashboardDisplay::enter(void)
 {
     if (term_screen_active())
         return (true);
-    if (g.fallback_end == g.view.end_time)
+    if (g.fallback)
         return (false);
     bool tty = isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
     int w = term_width(), h = term_height();
-    if (!tty || w < MIN_WIDTH || h < MIN_HEIGHT || !term_screen_enter())
+    bool small = !g.started && (w < MIN_WIDTH || h < MIN_HEIGHT);
+    if (!tty || small || !term_screen_enter())
     {
-        g.fallback_end = g.view.end_time;
-        std::string why = !tty ? "needs a terminal" : (w < MIN_WIDTH || h < MIN_HEIGHT) ? "needs 80x24 (this is " + std::to_string(w) + "x" + std::to_string(h) + ")" : "cannot go full screen";
+        g.fallback = true;
+        std::string why = !tty ? "needs a terminal" : small ? "needs 80x24 (this is " + std::to_string(w) + "x" + std::to_string(h) + ")" : "cannot go full screen";
         std::cout << "  " << paint(Color::Warning, "!") << " Dashboard " << why << dim(": Modern style instead") << std::endl;
+        if (tty)
+            usleep(1500000); // Modern's next screen clears it
         return (false);
+    }
+    if (!g.started)
+    {
+        g.started = true;
+        atexit(dashboard_exit); // runs before main()'s atexit(term_screen_leave)
     }
     screen_.invalidate();
     return (true);
+}
+
+// ==> Fresh page in the frame; the exam panels are no longer under it
+static void new_page(const std::string &where, const std::string &title, const std::string &keys)
+{
+    g.page = Page();
+    g.page.on = true;
+    g.page.where = where;
+    g.page.title = title;
+    g.page.keys = keys;
+    g.in_exam = false;
+    g.help = false;
+    g.trace = false;
+}
+
+static std::string arrows(void)
+{
+    return (uni("↑↓", "up/down"));
+}
+
+static std::string list_keys(const std::string &back)
+{
+    return (key_hint(arrows(), "move") + "   " + key_hint("enter", "select") + (back.empty() ? "" : "   " + back));
+}
+
+// ==> Lines of the page, list included
+static std::vector<std::string> page_lines(void)
+{
+    std::vector<std::string> lines = g.page.lines;
+    if (!g.page.rows.empty())
+    {
+        if (!lines.empty())
+            lines.push_back("");
+        std::vector<std::string> list = ui::list_lines(g.page.rows, g.page.cursor);
+        lines.insert(lines.end(), list.begin(), list.end());
+    }
+    if (!g.page.after.empty())
+    {
+        lines.push_back("");
+        lines.insert(lines.end(), g.page.after.begin(), g.page.after.end());
+    }
+    return (lines);
+}
+
+// ==> The page as a block, centred across the rect and a third of the way down
+void DashboardDisplay::drawPage(const ui::Rect &r)
+{
+    std::vector<std::string> lines = page_lines();
+    int w = 0;
+    for (size_t i = 0; i < lines.size(); i++)
+        w = std::max(w, ui::display_width(lines[i]));
+    int x = r.x + std::max((r.w - w) / 2, 0);
+    int y = r.y + std::max((r.h - (int)lines.size()) / 3, 0);
+    ui::text(screen_, {x, y, r.x + r.w - x, r.y + r.h - y}, lines);
+}
+
+// ==> Modern's pick() on the page: the options become its list
+std::string DashboardDisplay::listPick(const std::vector<Option> &options, int &cursor, const std::string &back)
+{
+    int hint_width = 18;
+    for (size_t i = 0; i < options.size(); i++)
+        hint_width = std::max(hint_width, ui::display_width(options[i].hint));
+    g.page.rows.clear();
+    for (size_t i = 0; i < options.size(); i++)
+    {
+        const Option &o = options[i];
+        ui::ListRow row;
+        row.key = o.key;
+        row.normal = dim(o.key) + "   " + ui::pad(o.label, 18) + "  " + dim(o.hint);
+        row.plain = o.key + "   " + ui::pad(o.label, 18) + "  " + ui::pad(o.hint, hint_width);
+        g.page.rows.push_back(row);
+    }
+    if (cursor < 0 || cursor >= (int)options.size())
+        cursor = 0;
+    while (1)
+    {
+        g.page.cursor = cursor;
+        draw();
+        char c = 0;
+        Key k = waitKey(c);
+        int i = ui::list_key(g.page.rows, cursor, k, c, !back.empty());
+        if (i == ui::LIST_BACK)
+            return (back);
+        if (i >= 0)
+            return (options[i].key);
+    }
+}
+
+// ==> Enter goes on
+void DashboardDisplay::waitPage(void)
+{
+    while (1)
+    {
+        draw();
+        char c = 0;
+        if (waitKey(c) == Key::Enter)
+            return;
+    }
 }
 
 void DashboardDisplay::setMessage(const std::string &text, bool error)
@@ -233,6 +399,8 @@ static std::string bottom_left(void)
     }
     if (!g.msg.empty() && time(NULL) < g.msg_until)
         return (g.msg);
+    if (g.page.on)
+        return (g.page.keys);
     if (g.trace)
         return (key_hint(term_unicode() ? "↑↓" : "up/down", "scroll") + "   " + key_hint("PgUp PgDn", "page") + "   " + key_hint("esc", "back"));
     if (g.help)
@@ -299,6 +467,23 @@ void DashboardDisplay::drawFrame(void)
         std::string b = dim("now " + std::to_string(W) + "x" + std::to_string(H));
         screen_.put(std::max((W - ui::display_width(a)) / 2, 0), H / 2 - 1, a);
         screen_.put(std::max((W - ui::display_width(b)) / 2, 0), H / 2, b);
+        return;
+    }
+
+    if (g.page.on && !g.page.overlay)
+    {
+        char clock_text[16];
+        strftime(clock_text, sizeof(clock_text), "%H:%M", localtime(&now));
+        ui::FrameOpts o;
+        o.title = bold("42 EXAM");
+        o.label = dim("v" EXAMSHELL_VERSION);
+        o.line = dim("offline simulator " + dot() + " ") + g.page.where;
+        o.line_right = dim(clock_text);
+        o.panel_title = g.page.title;
+        o.panel_label = g.page.label;
+        o.color = g.page.color;
+        drawPage(ui::frame(screen_, o));
+        ui::key_bar(screen_, bottom_left(), "");
         return;
     }
 
@@ -423,13 +608,23 @@ void DashboardDisplay::drawFrame(void)
             ui::panel(screen_, box, bold("Keys"), "", Color::Current);
             ui::text(screen_, {box.x + 3, box.y + 2, box.w - 6, box.h - 4}, lines);
         }
+
+        if (g.page.on) // Settings over the exam
+        {
+            std::vector<std::string> lines = page_lines();
+            int w = 4, h = lines.size() + 4;
+            for (size_t i = 0; i < lines.size(); i++)
+                w = std::max(w, ui::display_width(lines[i]) + 6);
+            w = std::min(w, W - 4);
+            h = std::min(h, body.h - 2);
+            ui::Rect box = {(W - w) / 2, std::max((body.h - h) / 2, 1), w, h};
+            screen_.fill(box);
+            ui::panel(screen_, box, g.page.title, g.page.label, Color::Current);
+            drawPage({box.x + 3, box.y + 2, box.w - 6, box.h - 4});
+        }
     }
 
-    // bottom bar
-    std::string right_text = bottom_right(v) + " ";
-    int right_w = ui::display_width(right_text);
-    screen_.put(1, H - 1, ui::truncate(bottom_left(), W - right_w - 3));
-    screen_.put(W - right_w, H - 1, right_text);
+    ui::key_bar(screen_, bottom_left(), bottom_right(v));
 }
 
 // ==> Next key. Meanwhile the clock ticks (redrawn at each new second, only the changed cells
@@ -540,14 +735,213 @@ void DashboardDisplay::showTrace(void)
 
 // ==> DashboardDisplay methods. Each one shows the Modern screen when the dashboard is not on.
 
+std::string DashboardDisplay::startMenu(bool invalid)
+{
+    if (!enter())
+        return (ModernDisplay::startMenu(invalid));
+    new_page("main menu", bold("Main menu"), list_keys(key_hint("q", "quit")));
+    std::vector<Option> o;
+    o.push_back({"1", "Piscine part", "exams 01-04"});
+    o.push_back({"2", "Student part", "exams 02-06"});
+    o.push_back({"3", "Practice", "pick any exercise"});
+    o.push_back({"4", "Settings", ""});
+    if (invalid)
+        setMessage("pick 1-4, or q to quit", true);
+    return (listPick(o, g.start_cursor, "q"));
+}
+
+std::string DashboardDisplay::studMenu(bool invalid)
+{
+    if (!enter())
+        return (ModernDisplay::studMenu(invalid));
+    new_page("student part", bold("Student part"), list_keys(key_hint("esc", "back")));
+    std::vector<Option> o;
+    for (int i = 2; i <= 6; i++)
+        o.push_back({std::to_string(i), "Exam rank 0" + std::to_string(i), exam_hint(true, i)});
+    if (invalid)
+        setMessage("pick 2-6, or esc to go back", true);
+    return (listPick(o, g.part_cursor, "0"));
+}
+
+std::string DashboardDisplay::piscineMenu(bool invalid)
+{
+    if (!enter())
+        return (ModernDisplay::piscineMenu(invalid));
+    new_page("piscine part", bold("Piscine part"), list_keys(key_hint("esc", "back")));
+    std::vector<Option> o;
+    for (int i = 1; i <= 4; i++)
+        o.push_back({std::to_string(i), "Exam week 0" + std::to_string(i), exam_hint(false, i)});
+    if (invalid)
+        setMessage("pick 1-4, or esc to go back", true);
+    return (listPick(o, g.part_cursor, "0"));
+}
+
+// ==> Settings as a page from the main menu, as a box over the exam during one. The exam calls
+// it again after each change; the style applies when the menu is left (the exam then picks
+// the display again).
 std::string DashboardDisplay::settingsMenu(const SettingsView &s)
 {
-    if (term_screen_active())
+    if (!enter())
+        return (ModernDisplay::settingsMenu(s));
+    struct Row
     {
-        term_screen_leave();
-        g.after_settings = true;
+        std::string key;
+        std::string label;
+        std::string value; // coloured
+        std::string plain; // same without colour, for the highlighted row
+    };
+    std::string style = uni("‹ ", "< ") + style_label(s.style) + uni(" ›", " >");
+    std::vector<Row> rows;
+    rows.push_back({"3", "Display style", paint(Color::Current, style), style});
+    rows.push_back({"1", "Enable passed exercises", toggle(s.dse), s.dse ? uni("●", "*") + " on" : uni("○", "o") + " off"});
+    rows.push_back({"2", "Cheat commands", toggle(s.dcc), s.dcc ? uni("●", "*") + " on" : uni("○", "o") + " off"});
+    rows.push_back({"4", "Login animation", toggle(s.anim), s.anim ? uni("●", "*") + " on" : uni("○", "o") + " off"});
+    rows.push_back({"5", "Cooldown in Practice mode", toggle(s.pcd), s.pcd ? uni("●", "*") + " on" : uni("○", "o") + " off"});
+    std::string keys = key_hint(arrows(), "move") + "   " + key_hint(uni("←→", "left/right") + " space", "change") + "   " + key_hint("esc", "save");
+    if (g.in_exam)
+    {
+        g.page = Page();
+        g.page.on = true;
+        g.page.overlay = true;
+        g.page.title = bold("Settings");
+        g.page.keys = keys;
+        g.help = false;
     }
-    return (ModernDisplay::settingsMenu(s));
+    else if (!g.page.on || g.page.where != "settings")
+        new_page("settings", bold("Settings"), keys);
+    g.page.rows.clear();
+    for (size_t i = 0; i < rows.size(); i++)
+        g.page.rows.push_back({rows[i].key, ui::pad(rows[i].label, 27) + rows[i].value, ui::pad(rows[i].label, 27) + ui::pad(rows[i].plain, 18)});
+    g.page.after.assign(1, dim("the display style applies when you leave the settings"));
+    int count = rows.size();
+    int &cursor = g.settings_cursor;
+    if (cursor < 0 || cursor >= count)
+        cursor = 0;
+    while (1)
+    {
+        g.page.cursor = cursor;
+        draw();
+        char c = 0;
+        Key k = waitKey(c);
+        const Row &row = rows[cursor];
+        if (k == Key::Up || (k == Key::Char && c == 'k'))
+            cursor = (cursor + count - 1) % count;
+        else if (k == Key::Down || (k == Key::Char && c == 'j'))
+            cursor = (cursor + 1) % count;
+        else if (k == Key::Left)
+            return (row.key == "3" ? "-3" : row.key);
+        else if (k == Key::Right || k == Key::Enter || (k == Key::Char && c == ' '))
+            return (row.key);
+        else if (k == Key::Esc || (k == Key::Char && (c == 'q' || c == '0' || c == ',')))
+        {
+            if (g.page.overlay)
+                g.page = Page(); // the "saved" message shows over the exam
+            return ("0");
+        }
+        else if (k == Key::Char && c >= '1' && c <= '5')
+            return (std::string(1, c));
+    }
+}
+
+// ==> Saved exam found at startup: "1" to restore, "2" to erase
+std::string DashboardDisplay::restorePrompt(const RestoreView &r)
+{
+    if (!enter())
+        return (ModernDisplay::restorePrompt(r));
+    new_page("saved exam", bold("Saved exam found"), list_keys(""));
+    g.page.lines.push_back(dim("exam      ") + bold(exam_title(r.student, r.exam_number)));
+    g.page.lines.push_back(dim("exercise  ") + r.ex_name);
+    g.page.lines.push_back(dim("time left ") + paint(Color::Warning, clock_long(r.end_time - time(NULL))));
+    std::vector<Option> o;
+    o.push_back({"1", "Restore", "continue the exam"});
+    o.push_back({"2", "Erase", "delete it, start over"});
+    int cursor = 0;
+    return (listPick(o, cursor, ""));
+}
+
+bool DashboardDisplay::confirmRegistration(bool student, int exam_number)
+{
+    if (!enter())
+        return (ModernDisplay::confirmRegistration(student, exam_number));
+    new_page(student ? "student part" : "piscine part", bold(exam_title(student, exam_number)), list_keys(key_hint("esc", "back")));
+    g.page.lines.push_back(exam_hint(student, exam_number));
+    g.page.lines.push_back(dim("The clock starts once you are logged in."));
+    std::vector<Option> o;
+    o.push_back({"y", "Start", "begin this exam"});
+    o.push_back({"n", "Back", "pick another exam"});
+    int cursor = 0;
+    return (listPick(o, cursor, "n") == "y");
+}
+
+void DashboardDisplay::showExplanation(void)
+{
+    if (!enter())
+        return (ModernDisplay::showExplanation());
+    new_page("how it works", bold("How it works"), key_hint("enter", "continue"));
+    std::string b = paint(Color::Current, sym(Sym::Current)) + " ";
+    std::vector<std::string> &l = g.page.lines;
+    l.push_back(b + "Work in another terminal: keep this one for the exam shell.");
+    l.push_back(b + "Your subject is in " + bold("subjects/subject.en.txt") + ".");
+    l.push_back(b + "Put your files in " + bold("rendu/<exercise>/") + ". No git needed here,");
+    l.push_back("  but the real exam makes you push with git.");
+    l.push_back(b + "Press " + paint(Color::Current, "g") + " to be graded. Pass to reach the next level;");
+    l.push_back("  fail and you retry the same exercise for fewer points.");
+    l.push_back(b + "Each failed try makes you wait longer before the next grade.");
+    l.push_back("");
+    l.push_back(paint(Color::Warning, "! Not the real 42 exam and not made by 42."));
+    l.push_back(dim("  A private, offline exam simulator."));
+    waitPage();
+}
+
+// ==> Login animation on the page: the login and a masked password type in, a spinner
+// connects, then a check. Keys typed meanwhile are dropped.
+void DashboardDisplay::connexion(const std::string &username)
+{
+    if (!enter())
+        return (ModernDisplay::connexion(username));
+    new_page("login", paint(Color::Warning, "examshell"), dim("logging in" + sym(Sym::Ellipsis)));
+    g.page.label = dim("v" EXAMSHELL_VERSION);
+    std::string caret = paint(Color::Current, uni("█", "_"));
+    auto frame = [&](const std::string &login, const std::string &password, const std::string &status, int us) {
+        g.page.lines.clear();
+        g.page.lines.push_back(dim(ui::pad("login", 10)) + ui::pad(bold(login), 24));
+        g.page.lines.push_back(dim(ui::pad("password", 10)) + password);
+        g.page.after.assign(1, status);
+        draw(); // a resize is picked up by the size check of drawFrame
+        usleep(us);
+    };
+    std::string login;
+    frame("", "", "", 500000);
+    for (size_t i = 0; i < username.size(); i++)
+    {
+        login += username[i];
+        frame(login + caret, "", "", 90000);
+    }
+    srand(time(NULL));
+    int password_size = rand() % 10 + 4;
+    std::string password;
+    for (int i = 0; i < password_size; i++)
+    {
+        password += uni("•", "*");
+        frame(login, dim(password) + caret, "", 70000);
+    }
+    for (int f = 0; f < 14; f++)
+        frame(login, dim(password), paint(Color::Current, spinner_frame(f)) + dim(" connecting" + sym(Sym::Ellipsis)), 90000);
+    frame(login, dim(password), paint(Color::Success, sym(Sym::Check) + " connected"), 400000);
+    tcflush(STDIN_FILENO, TCIFLUSH);
+}
+
+void DashboardDisplay::showIntro(const std::string &username, bool student, int exam_number, int level, int time_max)
+{
+    if (!enter())
+        return (ModernDisplay::showIntro(username, student, exam_number, level, time_max));
+    new_page("exam", bold("Welcome, " + username), key_hint("enter", "start the exam"));
+    std::string sep = dim("  " + dot() + "  ");
+    g.page.lines.push_back(bold(exam_title(student, exam_number)) + sep + paint(Color::Mode, "REAL") + dim(" mode") + sep + "level " + std::to_string(level) + sep + duration(time_max * 60L));
+    g.page.lines.push_back("");
+    g.page.lines.push_back(dim("Points you earn count whatever happens. You can log out at any time."));
+    g.page.lines.push_back(dim("The clock starts when you press enter."));
+    waitPage();
 }
 
 void DashboardDisplay::showStatus(const ExamView &v)
@@ -624,22 +1018,26 @@ Action DashboardDisplay::readCommand(const ExamView &v)
     }
 }
 
-// ==> Typed "yes" leaves the exam: the full screen goes first, the main menu comes next
+// ==> Typed "yes" leaves the exam; the main menu (or the quit) comes next, still full screen
 bool DashboardDisplay::confirmFinish(void)
 {
     if (!term_screen_active())
         return (ModernDisplay::confirmFinish());
-    if (ask("Leave the exam? All progress is lost. Type yes:", true) != "yes")
-        return (false);
-    term_screen_leave();
-    return (true);
+    return (ask("Leave the exam? All progress is lost. Type yes:", true) == "yes");
 }
 
-// ==> After a failed grade the card simply stays in the panel; after a pass, enter goes on
+// ==> End summary: enter goes back to the main menu. After a failed grade the card simply
+// stays in the panel; after a pass, enter goes on.
 void DashboardDisplay::waitEnter(void)
 {
     if (!term_screen_active())
         return (ModernDisplay::waitEnter());
+    if (g.page.on && g.page.end)
+    {
+        waitPage();
+        g.page.end = false;
+        return;
+    }
     if (g.skip_wait || !g.has_result || !g.result.passed)
     {
         g.skip_wait = false;
@@ -729,24 +1127,33 @@ void DashboardDisplay::showResult(const GradeResult &r)
     draw();
 }
 
-// ==> The summary is Modern's card on the normal screen; the exam then waits for enter there
+// ==> Summary page; the exam then calls waitEnter and goes back to the main menu. It is
+// printed again on the normal screen if the program quits before another exam starts.
 void DashboardDisplay::showEnd(const ExamSummary &s)
 {
-    term_screen_leave();
-    ModernDisplay::showEnd(s);
+    g.ended = true;
+    g.summary = s;
+    if (!enter())
+        return (ModernDisplay::showEnd(s));
+    ui::BoxOpts opts;
+    end_card(s, opts);
+    new_page("results", opts.title, key_hint("enter", "main menu"));
+    g.page.color = opts.color;
+    g.page.end = true;
+    g.page.lines = end_lines(s);
+    g.page.after.assign(1, opts.footer);
+    draw();
 }
 
 void DashboardDisplay::message(Msg m)
 {
-    if (!term_screen_active() && !(g.after_settings && m == Msg::SettingsSaved))
+    if (!term_screen_active())
         return (ModernDisplay::message(m));
-    g.after_settings = false;
     std::string text = msg_text(m);
     if (text.empty())
         return;
     setMessage(text, false);
-    if (term_screen_active())
-        draw();
+    draw();
 }
 
 void DashboardDisplay::error(const std::string &text)
@@ -755,4 +1162,54 @@ void DashboardDisplay::error(const std::string &text)
         return (ModernDisplay::error(text));
     setMessage(text, true);
     draw();
+}
+
+// ==> Practice: Modern's screens on the normal screen for now. The full screen is left here and
+// entered again by the next Dashboard screen (the main menu when Practice ends).
+bool DashboardDisplay::practiceGuard(const RestoreView &saved)
+{
+    term_screen_leave();
+    return (ModernDisplay::practiceGuard(saved));
+}
+
+int DashboardDisplay::practicePicker(const std::vector<practice_entry> &index, std::string &query)
+{
+    term_screen_leave();
+    return (ModernDisplay::practicePicker(index, query));
+}
+
+void DashboardDisplay::practiceStart(const PracticeView &v)
+{
+    term_screen_leave();
+    ModernDisplay::practiceStart(v);
+}
+
+void DashboardDisplay::practiceStatus(const PracticeView &v, bool clear)
+{
+    term_screen_leave();
+    ModernDisplay::practiceStatus(v, clear);
+}
+
+void DashboardDisplay::practiceHelp(void)
+{
+    term_screen_leave();
+    ModernDisplay::practiceHelp();
+}
+
+PracticeAction DashboardDisplay::practiceCommand(const PracticeView &v)
+{
+    term_screen_leave();
+    return (ModernDisplay::practiceCommand(v));
+}
+
+void DashboardDisplay::practiceCooldown(time_t seconds)
+{
+    term_screen_leave();
+    ModernDisplay::practiceCooldown(seconds);
+}
+
+std::string DashboardDisplay::practicePassed(const GradeResult &r)
+{
+    term_screen_leave();
+    return (ModernDisplay::practicePassed(r));
 }

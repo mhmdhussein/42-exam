@@ -84,13 +84,23 @@ When an exam ends (all levels passed, or `finish`), you go back to the main menu
 
 ### Dashboard style
 
-The **Dashboard** style (Settings → Display style) puts the exam on one full screen, like `htop`:
-exam, live clock (yellow under 30 minutes, red under 10), progress and levels on the left, the
-subject top right, the last grade (spinner while grading, then the result card) bottom right, and a
-bar with the keys and the cooldown at the bottom. It needs a terminal of at least 80×24: smaller at
-the start, or when the input is not a terminal, the exam falls back to the Modern style; if the
-window shrinks below that later, it asks you to make it bigger. Menus, Practice mode and the end
-summary use the Modern screens. `NO_COLOR` and `EXAMSHELL_ASCII` work as in Modern.
+The **Dashboard** style (Settings → Display style) runs the whole simulator on one full screen, like
+`htop`, so nothing flickers when the screen changes. The menus, the saved-exam prompt, the exam start
+(how it works, login, welcome) and the end summary are pages of one frame: a title bar, one panel
+and a bar with the keys at the bottom (↑/↓ or `j`/`k`, Enter, Esc, or the number of an entry).
+During the exam: exam, live clock (yellow under 30 minutes, red under 10), progress and levels on
+the left, the subject top right, the last grade (spinner while grading, then the result card) bottom
+right, and the keys and the cooldown at the bottom. Settings opens as a box over the exam.
+
+Finishing an exam (`q`, `finish`, or passing the last level) shows the summary and goes back to the
+main menu, still full screen. The full screen closes only when you quit (`q` in the main menu,
+`exit`, Ctrl+C, Ctrl+D): if an exam just ended, its summary is printed on the normal screen so it
+stays in your scrollback. Practice mode still uses the Modern screens on the normal screen and comes
+back to the full screen when you leave it.
+
+It needs a terminal of at least 80×24: smaller at the start, or when the input is not a terminal,
+the simulator falls back to the Modern style; if the window shrinks below that later, it asks you to
+make it bigger. `NO_COLOR` and `EXAMSHELL_ASCII` work as in Modern.
 
 | Key | |
 |---|---|
@@ -129,7 +139,7 @@ Saved in `.system/exam_token/.settings`.
 
 1. Enable exercises you already passed
 2. Enable cheat commands
-3. Display style: **Modern** (default: boxes, arrow-key menus, result cards), **Legacy** (the original look), **Exact examshell** (the original look, with status screens worded like the real 42 examshell) or **Dashboard** (the exam on one full screen, see above). Press 3 to cycle (in Modern: ←/→ on the row); it applies as soon as you leave the menu, also in the middle of an exam. Settings files from older versions load as Exact examshell if that switch was on, otherwise Modern
+3. Display style: **Modern** (default: boxes, arrow-key menus, result cards), **Legacy** (the original look), **Exact examshell** (the original look, with status screens worded like the real 42 examshell) or **Dashboard** (the whole simulator on one full screen, see above). Press 3 to cycle (in Modern: ←/→ on the row); it applies as soon as you leave the menu, also in the middle of an exam. Settings files from older versions load as Exact examshell if that switch was on, otherwise Modern
 4. Login animation: show the fake examshell login when an exam starts
 5. Cooldown in Practice mode (default off): after a failed `grademe` in Practice, wait like in an exam; the wait grows with each failure and resets when you switch exercise
 

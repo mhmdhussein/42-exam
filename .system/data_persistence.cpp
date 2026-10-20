@@ -105,7 +105,8 @@ void exam::restore_data(void)
             display->message(Msg::TokenDeleted);
             // delete file and return to menu
             system("rm .system/exam_token/current_token.txt");
-            system("clear");
+            if (!term_screen_active())
+                system("clear");
             ask_param();
         }
     }
