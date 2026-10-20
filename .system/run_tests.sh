@@ -133,10 +133,10 @@ if [[ $FILES == *'*'* ]]; then
             is_source "$f" && STUD_SOURCES+=("${f##*/}")
         done
     done
-    [ ${#STUD_SOURCES[@]} -gt 0 ] || fail_build "compile error" "no source files in rendu/$NAME/ (expected: $FILES)"
+    [ ${#STUD_SOURCES[@]} -gt 0 ] || fail_build "missing file" "no source files in rendu/$NAME/ (expected: $FILES)"
 else
     for f in "${FILE_LIST[@]}"; do
-        [ -f "$RENDU/$f" ] || fail_build "compile error" "missing file: rendu/$NAME/$f"
+        [ -f "$RENDU/$f" ] || fail_build "missing file" "rendu/$NAME/$f"
         cp "$RENDU/$f" build_stud/
     done
     # the student's own headers win over the given ones

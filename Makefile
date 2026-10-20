@@ -3,6 +3,10 @@ CXX      = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++11 -pthread
 LDLIBS   = -lreadline
 
+# Simulator version, shown on the login screen: bump the VERSION file for a release
+VERSION  := $(strip $(shell cat VERSION 2> /dev/null))
+CXXFLAGS += -DEXAMSHELL_VERSION='"$(or $(VERSION),dev)"'
+
 SRCS = .system/exercise.cpp .system/main.cpp .system/menu.cpp .system/exam.cpp \
        .system/utils.cpp .system/grade_request.cpp .system/data_persistence.cpp \
        .system/practice.cpp .system/display_legacy.cpp .system/display_examshell.cpp .system/display_modern.cpp \
@@ -20,7 +24,7 @@ build: $(NAME)
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) $(LDLIBS) -o $(NAME)
 
-$(OBJDIR)/%.o: .system/%.cpp .system/exam.hpp .system/exercise.hpp .system/display.hpp .system/term.hpp .system/ui.hpp
+$(OBJDIR)/%.o: .system/%.cpp .system/exam.hpp .system/exercise.hpp .system/display.hpp .system/term.hpp .system/ui.hpp $(wildcard VERSION)
 	@mkdir -p $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 

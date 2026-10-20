@@ -62,9 +62,9 @@ std::string sym(Sym s)
     case Sym::Pending:
         return (u ? "·" : ".");
     case Sym::Clock:
-        return (u ? "⏱" : "T");
+        return (u ? "◷" : "T"); // ⏱ is drawn two columns wide (emoji) by some terminals
     case Sym::Cooldown:
-        return (u ? "⟳" : "~");
+        return (u ? "↻" : "~"); // ⟳ is drawn two columns wide by some terminals
     case Sym::Prompt:
         return (u ? "❯" : ">");
     case Sym::Ellipsis:
@@ -160,6 +160,7 @@ std::string box(const std::vector<std::string> &lines, const BoxOpts &opts)
             width = std::max(width, display_width(lines[i]) + 6);
         width = std::max(width, display_width(opts.title) + display_width(opts.label) + 10);
         width = std::max(width, display_width(opts.footer) + 6);
+        width = std::max(width, opts.min_width);
     }
     width = std::min(std::max(width, 20), max_width);
 

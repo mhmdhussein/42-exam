@@ -20,7 +20,7 @@ trace_case() {
     } > "$TRACE_FILE"
 }
 
-# A failure before any case runs. $1 = reason (compile error, forbidden function: x...),
+# A failure before any case runs. $1 = reason (missing file, compile error, forbidden function: x...),
 # $2 = details (compiler output), optional.
 trace_build() {
     {

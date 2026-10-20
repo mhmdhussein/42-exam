@@ -63,7 +63,8 @@ bool term_unicode(void)
     return (unicode);
 }
 
-// ==> Put the terminal back in line mode with a visible cursor
+// ==> Put the terminal back in line mode with a visible cursor. Keys still waiting are
+// dropped (TCSAFLUSH), so stray arrow-key bytes don't land in the next line read.
 void term_raw_restore(void)
 {
     if (!g_raw_active)
@@ -73,8 +74,12 @@ void term_raw_restore(void)
     g_raw_active = false;
 }
 
+// ==> Already in raw mode: nothing to do, and the saved line-mode settings are kept.
+// TCSANOW keeps keys typed ahead (TCSAFLUSH would drop them).
 bool term_raw_enter(void)
 {
+    if (g_raw_active)
+        return (true);
     if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO))
         return (false);
     if (tcgetattr(STDIN_FILENO, &g_saved_termios) == -1)
@@ -83,7 +88,7 @@ bool term_raw_enter(void)
     raw.c_lflag &= ~(ICANON | ECHO);
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 0;
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1)
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) == -1)
         return (false);
     g_raw_active = true;
     write(STDOUT_FILENO, "\e[?25l", 6);

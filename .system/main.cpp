@@ -15,11 +15,14 @@ void exam::exam_prompt(void)
         switch (action)
         {
         case Action::Finish:
+        case Action::Quit:
             if (display->confirmFinish())
             {
                 if (std::ifstream(".system/exam_token/current_token.txt"))
                     remove(".system/exam_token/current_token.txt");
-                exit(0);
+                if (action == Action::Quit)
+                    exit(0);
+                throw exam_finished(); // caught in main(), back to the main menu
             }
             display->message(Msg::FinishAborted);
             break;
@@ -133,7 +136,18 @@ int main(void)
     else
         exm.ask_param();
 
-    exm.start_new_ex();
-
+    // `finish` unwinds to here from deep in the exam (start_new_ex calls itself per level)
+    while (1)
+    {
+        try
+        {
+            exm.start_new_ex();
+        }
+        catch (const exam_finished &)
+        {
+            exm.reset_session();
+            exm.ask_param();
+        }
+    }
     return (0);
 }
