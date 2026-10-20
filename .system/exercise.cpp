@@ -20,7 +20,8 @@ int exam::change_ex(void)
         return (0);
     }
     clean_all();
-    system("clear");
+    if (!term_screen_active()) // the Dashboard redraws its own screen
+        system("clear");
     display->message(Msg::NewExercise);
     changex = 1;
     delete current_ex;

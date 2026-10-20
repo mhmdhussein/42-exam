@@ -21,6 +21,12 @@ std::string ordinal(int n);
 std::string exam_title(bool student, int exam_number);
 std::string untab(const std::string &s);
 std::string grading_progress(void); // first line of .system/grading/progress
+std::string exam_hint(bool student, int exam_number); // 4 levels · 3h
+std::string toggle(bool on);                          // ● on / ○ off
+const char *style_label(DisplayStyle style);
+// end card: time, cheats, passed levels; then its title, footer and colour
+std::vector<std::string> end_lines(const ExamSummary &s);
+void end_card(const ExamSummary &s, ui::BoxOpts &opts);
 // content of the result card; sets title, label, footer and colour of opts
 std::vector<std::string> result_lines(const GradeResult &r, ui::BoxOpts &opts, size_t max_block);
 }

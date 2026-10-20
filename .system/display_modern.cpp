@@ -38,9 +38,7 @@ std::string dim(const std::string &s)
 // inverted row for the menu highlight; s must not hold escape codes
 std::string highlight(const std::string &s)
 {
-    if (!term_color())
-        return (s);
-    return ("\e[30;102m" + s + "\e[0m");
+    return (ui::highlight(s));
 }
 
 // ==> New screen: like clear(1), scrollback included, so old screens don't pile up above
@@ -271,7 +269,7 @@ std::string ModernDisplay::pick(const std::string &header, const std::vector<Opt
 }
 
 // 4 levels · 3h
-static std::string exam_hint(bool student, int exam_number)
+std::string modern::exam_hint(bool student, int exam_number)
 {
     int levels = exam_levels(student, exam_number);
     return (std::to_string(levels) + (levels == 1 ? " level " : " levels ") + dot() + " " + duration(exam_minutes(student, exam_number) * 60L));
@@ -321,12 +319,12 @@ std::string ModernDisplay::piscineMenu(bool invalid)
     return (pick(header, o, part_cursor_, footer_keys(keys), "0"));
 }
 
-static std::string toggle(bool on)
+std::string modern::toggle(bool on)
 {
     return (on ? paint(Color::Success, uni("●", "*") + " on") : dim(uni("○", "o") + " off"));
 }
 
-static const char *style_label(DisplayStyle style)
+const char *modern::style_label(DisplayStyle style)
 {
     if (style == DisplayStyle::Exact)
         return ("Exact examshell");
@@ -766,9 +764,10 @@ void ModernDisplay::showResult(const GradeResult &r)
 }
 
 
-void ModernDisplay::showEnd(const ExamSummary &s)
+// ==> Content of the end card: time, cheats and one row per passed level
+std::vector<std::string> modern::end_lines(const ExamSummary &s)
 {
-    std::vector<std::string> lines(1, "");
+    std::vector<std::string> lines;
     lines.push_back(dim(ui::pad("time used", 13)) + duration(s.time_used) + dim(" of " + duration(s.time_total)));
     lines.push_back(dim(ui::pad("cheats", 13)) + (s.cheat_count ? paint(Color::Failure, std::to_string(s.cheat_count)) : paint(Color::Success, "none")));
     lines.push_back("");
@@ -778,14 +777,30 @@ void ModernDisplay::showEnd(const ExamSummary &s)
         std::string unknown = uni("—", "-");
         lines.push_back(paint(Color::Success, sym(Sym::Check)) + " lvl " + ui::pad(std::to_string(row.level), 2) + " " + ui::pad(row.name.empty() ? unknown : row.name, 18) + " " + ui::pad(row.tries < 0 ? unknown : tries_text(row.tries), 9) + dim(ui::pad(row.seconds < 0 ? unknown : duration(row.seconds), 7, ui::Align::Right)));
     }
-    lines.push_back("");
-    ui::BoxOpts opts = card();
+    return (lines);
+}
+
+// ==> Title, footer and colour of the end card
+void modern::end_card(const ExamSummary &s, ui::BoxOpts &opts)
+{
     Color c = s.cheat_count ? Color::Warning : Color::Success;
     opts.title = paint(Color::Bold, paint(c, exam_title(s.student, s.exam_number) + " " + dot() + " " + std::to_string(s.grade) + "/100"));
     if (s.cheat_count)
         opts.footer = dim("thanks for studying, " + s.username);
     else
         opts.footer = dim("nice work, " + s.username + " " + dot() + " " + uni("♥", "<3"));
+    opts.color = c;
+}
+
+void ModernDisplay::showEnd(const ExamSummary &s)
+{
+    std::vector<std::string> lines(1, "");
+    std::vector<std::string> body = end_lines(s);
+    lines.insert(lines.end(), body.begin(), body.end());
+    lines.push_back("");
+    ui::BoxOpts opts = card();
+    end_card(s, opts);
+    opts.color = Color::Box;
     next_step_ = "main menu"; // the exam waits for enter, then goes back to the menus
     std::cout << std::endl << ui::box(lines, opts) << std::endl;
 }

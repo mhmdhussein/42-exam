@@ -6,6 +6,7 @@
 #include <mutex>
 #include <atomic>
 #include <functional>
+#include "term.hpp"
 
 // ==> Building blocks for the modern screens. Colour and Unicode follow term_color() / term_unicode().
 namespace ui
@@ -132,6 +133,38 @@ void panel(Screen &s, const Rect &r, const std::string &title, const std::string
 void text(Screen &s, const Rect &r, const std::vector<std::string> &lines, int scroll = 0);
 // ==> Plain text word-wrapped to `width` columns; words longer than a line are cut
 std::vector<std::string> wrap(const std::string &line, int width);
+
+// ==> Page frame: title panel (3 rows), one content panel under it, the last row left for key_bar
+struct FrameOpts
+{
+    std::string title;      // title panel border, left
+    std::string label;      // title panel border, right
+    std::string line;       // inside the title panel, left
+    std::string line_right; // inside the title panel, right
+    std::string panel_title;
+    std::string panel_label;
+    Color color = Color::Box; // content panel
+};
+Rect frame(Screen &s, const FrameOpts &o); // returns the inside of the content panel
+// ==> Last row: left text cut so the right one fits
+void key_bar(Screen &s, const std::string &left, const std::string &right);
+
+// ==> Inverted row; s must not hold escape codes
+std::string highlight(const std::string &s);
+
+// ==> Full-screen list: one row per item, the one at the cursor highlighted
+struct ListRow
+{
+    std::string key;    // typed to pick the row directly ("" = none)
+    std::string normal; // may hold colour
+    std::string plain;  // same without colour, shown highlighted
+};
+std::vector<std::string> list_lines(const std::vector<ListRow> &rows, int cursor);
+// ↑↓/j/k move, enter picks, a row's key picks it, esc/q goes back when allowed.
+// Returns the picked row, LIST_BACK, or LIST_NONE when the key only moved the cursor (or did nothing).
+const int LIST_NONE = -1;
+const int LIST_BACK = -2;
+int list_key(const std::vector<ListRow> &rows, int &cursor, Key k, char c, bool can_back);
 
 // ==> One-line spinner redrawn in place while a blocking call runs on the calling thread
 class Spinner

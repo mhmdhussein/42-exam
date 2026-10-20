@@ -332,13 +332,15 @@ public:
     void message(Msg m);
     void error(const std::string &text);
 
-private:
+protected:
     struct Option
     {
         std::string key; // returned when picked, also typed to pick it directly
         std::string label;
         std::string hint;
     };
+
+private:
     std::string pick(const std::string &header, const std::vector<Option> &options, int &cursor, const std::string &footer, const std::string &back);
 
     int start_cursor_;
@@ -349,15 +351,25 @@ private:
     ui::Spinner spinner_;
 };
 
-// ==> "Dashboard" style: the exam on one full screen with panels, a live clock and single-key
-// controls (display_dashboard.cpp). Everything outside the exam (menus, Practice) is Modern's.
+// ==> "Dashboard" style: the whole program on one full screen (display_dashboard.cpp): menus and
+// exam start as pages of one frame, the exam as panels with a live clock and single-key controls.
+// Practice is still Modern's, on the normal screen.
 class DashboardDisplay : public ModernDisplay
 {
 public:
     DashboardDisplay(void);
     ~DashboardDisplay(void);
 
+    std::string startMenu(bool invalid);
+    std::string studMenu(bool invalid);
+    std::string piscineMenu(bool invalid);
     std::string settingsMenu(const SettingsView &s);
+    std::string restorePrompt(const RestoreView &r);
+    bool confirmRegistration(bool student, int exam_number);
+
+    void showExplanation(void);
+    void connexion(const std::string &username);
+    void showIntro(const std::string &username, bool student, int exam_number, int level, int time_max);
 
     void showStatus(const ExamView &v);
     void showHelp(bool cheats);
@@ -373,14 +385,27 @@ public:
     void showResult(const GradeResult &r);
     void showEnd(const ExamSummary &s);
 
+    // Practice: Modern's screens on the normal screen; the next Dashboard screen comes back full screen
+    bool practiceGuard(const RestoreView &saved);
+    int practicePicker(const std::vector<practice_entry> &index, std::string &query);
+    void practiceStart(const PracticeView &v);
+    void practiceStatus(const PracticeView &v, bool clear);
+    void practiceHelp(void);
+    PracticeAction practiceCommand(const PracticeView &v);
+    void practiceCooldown(time_t seconds);
+    std::string practicePassed(const GradeResult &r);
+
     void message(Msg m);
     void error(const std::string &text);
 
 private:
-    bool enter(void); // full screen on; false = this exam falls back to Modern
+    bool enter(void); // full screen on; false = the program falls back to Modern
     void draw(void);  // whole frame into screen_, then flush
     void drawFrame(void);
+    void drawPage(const ui::Rect &r); // lines and list of the current page
     void drawGrade(const ui::Rect &r);
+    std::string listPick(const std::vector<Option> &options, int &cursor, const std::string &back); // Modern's pick() as a page list
+    void waitPage(void); // enter goes on
     void setMessage(const std::string &text, bool error);
     Key waitKey(char &c); // next key; redraws on clock ticks and resizes meanwhile
     std::string ask(const std::string &question, bool line); // inline prompt in the bottom bar
@@ -388,7 +413,7 @@ private:
     void showTrace(void);
     void spin(void);
 
-    ui::Screen screen_;
+    ui::Screen &screen_; // shared by every DashboardDisplay: a new one only sends what changed
     std::mutex draw_mutex_; // screen_ is drawn by the main thread and the grading spinner
     std::thread spinner_thread_;
     std::atomic<bool> spinning_;
