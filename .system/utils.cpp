@@ -49,6 +49,7 @@ std::string lastupdate(time_t end_time)
 
 void sigd(void)
 {
+    term_screen_leave();
     term_raw_restore();
     std::cout << std::endl
               << "You have been disconnected after using Ctrl+D" << std::endl;
@@ -57,6 +58,7 @@ void sigd(void)
 
 void sigc(int sig)
 {
+    term_screen_leave();
     term_raw_restore();
     if (sig == SIGINT)
     {

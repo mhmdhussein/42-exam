@@ -80,6 +80,28 @@ prompt shows the time left (`examshell [2:41] ❯`), yellow under 30 minutes and
 then a card: on failure, the first failing test with its expected and actual output; on success, your
 new level and points. When the exam ends you get a summary with tries and time spent per level.
 Set `NO_COLOR=1` for no colours, or `EXAMSHELL_ASCII=1` for plain ASCII boxes and symbols.
+When an exam ends (all levels passed, or `finish`), you go back to the main menu.
+
+### Dashboard style
+
+The **Dashboard** style (Settings → Display style) puts the exam on one full screen, like `htop`:
+exam, live clock (yellow under 30 minutes, red under 10), progress and levels on the left, the
+subject top right, the last grade (spinner while grading, then the result card) bottom right, and a
+bar with the keys and the cooldown at the bottom. It needs a terminal of at least 80×24: smaller at
+the start, or when the input is not a terminal, the exam falls back to the Modern style; if the
+window shrinks below that later, it asks you to make it bigger. Menus, Practice mode and the end
+summary use the Modern screens. `NO_COLOR` and `EXAMSHELL_ASCII` work as in Modern.
+
+| Key | |
+|---|---|
+| `g` | Grade (asks `y/n`) |
+| `s` / Tab | Scroll the subject: ↑/↓, PgUp/PgDn, `j`/`k`; Esc to leave |
+| `t` | Full trace of the last failure (Esc or `q` returns) |
+| `,` | Settings (changing the style applies right away) |
+| `?` | Key help |
+| `q` | Leave the exam (type `yes`), back to the main menu |
+| `:` | Type a command, as at the prompt: `grademe`, `status`, `finish`, `exit`, cheat commands... |
+| `G` `r` `f` `n` | `gradenow`, `remove_grade_time`, `force_success`, `new_ex` (cheat commands on only) |
 
 ### Commands
 
@@ -107,7 +129,7 @@ Saved in `.system/exam_token/.settings`.
 
 1. Enable exercises you already passed
 2. Enable cheat commands
-3. Display style: **Modern** (default: boxes, arrow-key menus, result cards), **Legacy** (the original look) or **Exact examshell** (the original look, with status screens worded like the real 42 examshell). Press 3 to cycle (in Modern: ←/→ on the row); it applies as soon as you leave the menu, also in the middle of an exam. Settings files from older versions load as Exact examshell if that switch was on, otherwise Modern
+3. Display style: **Modern** (default: boxes, arrow-key menus, result cards), **Legacy** (the original look), **Exact examshell** (the original look, with status screens worded like the real 42 examshell) or **Dashboard** (the exam on one full screen, see above). Press 3 to cycle (in Modern: ←/→ on the row); it applies as soon as you leave the menu, also in the middle of an exam. Settings files from older versions load as Exact examshell if that switch was on, otherwise Modern
 4. Login animation: show the fake examshell login when an exam starts
 5. Cooldown in Practice mode (default off): after a failed `grademe` in Practice, wait like in an exam; the wait grows with each failure and resets when you switch exercise
 

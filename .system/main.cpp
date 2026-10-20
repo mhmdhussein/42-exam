@@ -1,11 +1,12 @@
 #include "exam.hpp"
+#include "term.hpp"
 
 // ==> Shell prompt
 void exam::exam_prompt(void)
 {
     while (1)
     {
-        Action action = display->readCommand(end_time);
+        Action action = display->readCommand(make_view());
         bool cheat = action == Action::RemoveGradeTime || action == Action::NewEx || action == Action::ForceSuccess || action == Action::GradeNow;
         if (cheat && !setting_dcc)
         {
@@ -125,6 +126,7 @@ int main(void)
     signal(SIGINT, sigc);
     signal(SIGQUIT, sigc);
     signal(SIGTERM, sigc);
+    atexit(term_screen_leave); // `exit` in the exam, `q` in the menu: the terminal comes back as it was
 
     if (file_exists("a.out"))
         remove("a.out");

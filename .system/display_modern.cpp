@@ -1,6 +1,7 @@
 #include "exam.hpp"
 #include "term.hpp"
 #include "ui.hpp"
+#include "display_parts.hpp"
 #include <algorithm>
 
 using ui::Color;
@@ -8,32 +9,34 @@ using ui::Sym;
 using ui::paint;
 using ui::sym;
 
-// ==> Small helpers for the modern screens
+// ==> Small helpers for the modern screens (the ones in display_parts.hpp are shared with the dashboard)
+namespace modern
+{
 
 // unicode character, or its ASCII stand-in
-static std::string uni(const char *u, const char *a)
+std::string uni(const char *u, const char *a)
 {
     return (term_unicode() ? u : a);
 }
 
 // separator between items on one line
-static std::string dot(void)
+std::string dot(void)
 {
     return (uni("·", "-"));
 }
 
-static std::string bold(const std::string &s)
+std::string bold(const std::string &s)
 {
     return (paint(Color::Bold, paint(Color::Text, s)));
 }
 
-static std::string dim(const std::string &s)
+std::string dim(const std::string &s)
 {
     return (paint(Color::Dim, s));
 }
 
 // inverted row for the menu highlight; s must not hold escape codes
-static std::string highlight(const std::string &s)
+std::string highlight(const std::string &s)
 {
     if (!term_color())
         return (s);
@@ -99,13 +102,13 @@ static Key read_key(char &c)
     return (k);
 }
 
-static std::string two(long n)
+std::string two(long n)
 {
     return ((n < 10 ? "0" : "") + std::to_string(n));
 }
 
 // 2:41:07
-static std::string clock_long(long s)
+std::string clock_long(long s)
 {
     if (s < 0)
         s = 0;
@@ -113,7 +116,7 @@ static std::string clock_long(long s)
 }
 
 // 2:41
-static std::string clock_short(long s)
+std::string clock_short(long s)
 {
     if (s < 0)
         s = 0;
@@ -121,7 +124,7 @@ static std::string clock_short(long s)
 }
 
 // 1h 52m, 6m, 45s
-static std::string duration(long s)
+std::string duration(long s)
 {
     if (s < 0)
         s = 0;
@@ -134,19 +137,19 @@ static std::string duration(long s)
 }
 
 // 4m, 4m 12s, 30s
-static std::string wait_time(long s)
+std::string wait_time(long s)
 {
     if (s < 60)
         return (std::to_string(s < 0 ? 0 : s) + "s");
     return (std::to_string(s / 60) + "m" + (s % 60 ? " " + std::to_string(s % 60) + "s" : ""));
 }
 
-static std::string tries_text(int n)
+std::string tries_text(int n)
 {
     return (std::to_string(n) + (n == 1 ? " try" : " tries"));
 }
 
-static std::string ordinal(int n)
+std::string ordinal(int n)
 {
     std::string suffix = "th";
     if (n % 100 < 11 || n % 100 > 13)
@@ -161,13 +164,13 @@ static std::string ordinal(int n)
     return (std::to_string(n) + suffix);
 }
 
-static std::string exam_title(bool student, int exam_number)
+std::string exam_title(bool student, int exam_number)
 {
     return (std::string(student ? "EXAM RANK 0" : "EXAM WEEK 0") + std::to_string(exam_number));
 }
 
 // tabs count as one column in display_width, so expand them
-static std::string untab(const std::string &s)
+std::string untab(const std::string &s)
 {
     std::string out;
     for (size_t i = 0; i < s.size(); i++)
@@ -193,6 +196,10 @@ static std::string footer_keys(const std::string &keys)
 {
     return ("  " + dim(keys));
 }
+
+}
+
+using namespace modern;
 
 // ==> ModernDisplay
 
@@ -325,6 +332,8 @@ static const char *style_label(DisplayStyle style)
         return ("Exact examshell");
     if (style == DisplayStyle::Legacy)
         return ("Legacy");
+    if (style == DisplayStyle::Dashboard)
+        return ("Dashboard");
     return ("Modern");
 }
 
@@ -607,9 +616,9 @@ static std::string rl(const std::string &escape)
 }
 
 // ==> Prompt with the time left, recomputed each time it is shown
-Action ModernDisplay::readCommand(time_t end_time)
+Action ModernDisplay::readCommand(const ExamView &v)
 {
-    long left = end_time - time(NULL);
+    long left = v.end_time - time(NULL);
     Color c = left < 600 ? Color::Failure : left < 1800 ? Color::Warning : Color::Text;
     std::string end = rl(ui::reset());
     std::string prompt = rl(ui::esc(Color::Warning)) + "examshell" + end + " " + rl(ui::esc(Color::Dim)) + "[" + end + rl(ui::esc(c)) + clock_short(left) + end + rl(ui::esc(Color::Dim)) + "]" + end + " " + rl(ui::esc(Color::Success)) + sym(Sym::Prompt) + end + " ";
@@ -653,7 +662,7 @@ void ModernDisplay::gradingStarted(void)
 }
 
 // ==> First line the shared runner writes to .system/grading/progress, "" if none
-static std::string grading_progress(void)
+std::string modern::grading_progress(void)
 {
     std::ifstream file(".system/grading/progress");
     std::string line;
@@ -688,21 +697,19 @@ static void add_block(std::vector<std::string> &lines, const std::string &label,
         lines.push_back(indent + dim(sym(Sym::Ellipsis) + " " + std::to_string(block.size() - max) + " more lines in the trace"));
 }
 
-void ModernDisplay::showResult(const GradeResult &r)
+// ==> Content of the result card; sets the title, label, footer and colour of opts
+std::vector<std::string> modern::result_lines(const GradeResult &r, ui::BoxOpts &opts, size_t max_block)
 {
     std::vector<std::string> lines;
-    ui::BoxOpts opts = card();
     if (r.passed)
     {
-        next_step_ = r.level >= r.level_max ? "see your results" : "next exercise";
         std::string tests = r.tests ? std::to_string(r.tests) + "/" + std::to_string(r.tests) + " tests   " : "";
         lines.push_back(bold(r.ex_name) + "   " + tests + dim(ordinal(r.tries) + " try"));
         lines.push_back("Level " + bold(std::to_string(r.level)) + dim("/" + std::to_string(r.level_max)) + "   " + ui::progress(r.level, r.level_max, 28) + "  " + paint(Color::Bold, paint(Color::Success, std::to_string(r.grade))));
         opts.title = paint(Color::Success, sym(Sym::Check) + " PASSED");
         opts.footer = paint(Color::Success, "+" + std::to_string(r.gained) + " pts");
         opts.color = Color::Success;
-        std::cout << std::endl << ui::box(lines, opts) << std::endl;
-        return;
+        return (lines);
     }
 
     opts.title = paint(Color::Failure, sym(Sym::Cross) + " FAILED");
@@ -716,8 +723,8 @@ void ModernDisplay::showResult(const GradeResult &r)
         lines.push_back("");
         if (r.reason != "diff")
             lines.push_back(dim(ui::pad("reason", 10)) + paint(Color::Warning, r.reason));
-        add_block(lines, "expected", r.expected, Color::Success, 6);
-        add_block(lines, "got", r.got, Color::Failure, 6);
+        add_block(lines, "expected", r.expected, Color::Success, max_block);
+        add_block(lines, "got", r.got, Color::Failure, max_block);
     }
     else if (r.structured)
     {
@@ -725,10 +732,11 @@ void ModernDisplay::showResult(const GradeResult &r)
         lines.push_back(paint(Color::Warning, r.reason));
         if (!r.got.empty())
             lines.push_back("");
-        for (size_t i = 0; i < r.got.size() && i < 8; i++)
+        size_t max = max_block + 2;
+        for (size_t i = 0; i < r.got.size() && i < max; i++)
             lines.push_back(dim(untab(r.got[i])));
-        if (r.got.size() > 8)
-            lines.push_back(dim(sym(Sym::Ellipsis) + " " + std::to_string(r.got.size() - 8) + " more lines in the trace"));
+        if (r.got.size() > max)
+            lines.push_back(dim(sym(Sym::Ellipsis) + " " + std::to_string(r.got.size() - max) + " more lines in the trace"));
     }
     else if (!r.raw.empty())
     {
@@ -745,8 +753,18 @@ void ModernDisplay::showResult(const GradeResult &r)
     if (r.retry_at > now)
         footer += (footer.empty() ? "" : " " + dot() + " ") + "retry in " + paint(Color::Warning, wait_time(r.retry_at - now));
     opts.footer = dim(footer);
+    return (lines);
+}
+
+void ModernDisplay::showResult(const GradeResult &r)
+{
+    ui::BoxOpts opts = card();
+    std::vector<std::string> lines = result_lines(r, opts, 6);
+    if (r.passed)
+        next_step_ = r.level >= r.level_max ? "see your results" : "next exercise";
     std::cout << std::endl << ui::box(lines, opts) << std::endl;
 }
+
 
 void ModernDisplay::showEnd(const ExamSummary &s)
 {
@@ -768,6 +786,7 @@ void ModernDisplay::showEnd(const ExamSummary &s)
         opts.footer = dim("thanks for studying, " + s.username);
     else
         opts.footer = dim("nice work, " + s.username + " " + dot() + " " + uni("♥", "<3"));
+    next_step_ = "main menu"; // the exam waits for enter, then goes back to the menus
     std::cout << std::endl << ui::box(lines, opts) << std::endl;
 }
 

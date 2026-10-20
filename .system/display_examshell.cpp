@@ -1,4 +1,5 @@
 #include "exam.hpp"
+#include "term.hpp"
 
 void ExamshellDisplay::showStatus(const ExamView &v)
 {
@@ -54,8 +55,13 @@ void ExamshellDisplay::showStatus(const ExamView &v)
 
 Display *make_display(DisplayStyle style)
 {
+    // only the Dashboard draws on the full screen; any other style starts back on the normal one
+    if (style != DisplayStyle::Dashboard)
+        term_screen_leave();
     switch (style)
     {
+    case DisplayStyle::Dashboard:
+        return (new DashboardDisplay());
     case DisplayStyle::Exact:
         return (new ExamshellDisplay());
     case DisplayStyle::Legacy:

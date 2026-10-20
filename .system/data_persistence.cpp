@@ -134,7 +134,7 @@ void exam::load_settings(void)
         if (file >> v)
             setting_pcd = v;
         // Line 6 is the display style; files without it only know the old esd switch (line 3)
-        if (file >> style && style >= 0 && style <= 2)
+        if (file >> style && style >= 0 && style < DISPLAY_STYLES)
             setting_style = (DisplayStyle)style;
         else
             setting_style = esd ? DisplayStyle::Exact : DisplayStyle::Modern;
