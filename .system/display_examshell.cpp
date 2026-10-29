@@ -43,8 +43,13 @@ void ExamshellDisplay::showStatus(const ExamView &v)
     std::cout << "The subject is located at: " << LIME << current_path() << "/subjects/subject.en.txt" << RESET << std::endl;
     std::cout << "You must turn in your files in a subdirectory with the" << std::endl;
     std::cout << "same name as the assignment (" << RED << current_path() << "/rendu/" << v.ex_name << RESET << "/)." << std::endl;
-    std::cout << "Here you don't need to use git." << std::endl
-              << std::endl;
+    if (v.git)
+        std::cout << "Only what you push to the git repository is graded"
+                  << (v.push_status.empty() ? std::string(".") : " (" + std::string(LIME) + v.push_status + RESET + ").") << std::endl
+                  << std::endl;
+    else
+        std::cout << "Here you don't need to use git." << std::endl
+                  << std::endl;
     std::cout << "The end date for this exam is: " << LIME << std::put_time(std::localtime(&v.end_time), "%d/%m/%Y %H:%M:%S") << RESET << std::endl;
     std::cout << "You have " << LIME << remaining_time(v.end_time) << RESET << " remaining" << std::endl;
     std::cout << std::endl

@@ -4,6 +4,7 @@
 # clients on bash's /dev/tcp (no nc needed), and compares what every client
 # received. Runs from the repo root.
 source .system/trace.sh
+RENDU=${RENDU:-$PWD/rendu/mini_serv} # the pushed snapshot in git submission mode
 cd .system/grading || exit 1
 rm -f passed
 
@@ -26,7 +27,7 @@ fail_build() { trace_build "$1" "$2"; exit 1; }
 mkdir -p build_ref build_stud run
 gcc -Wall -Wextra -Werror mini_serv.c -o build_ref/mini_serv 2> run/cc \
     || fail_build "reference did not compile" "$(cat run/cc)"
-gcc -Wall -Wextra -Werror -c ../../rendu/mini_serv/mini_serv.c -o build_stud/mini_serv.o 2> run/cc \
+gcc -Wall -Wextra -Werror -c "$RENDU/mini_serv.c" -o build_stud/mini_serv.o 2> run/cc \
     || fail_build "compile error" "$(cat run/cc)"
 gcc build_stud/mini_serv.o -o build_stud/mini_serv 2> run/cc || fail_build "compile error" "$(cat run/cc)"
 for sym in $(nm -u build_stud/mini_serv.o | awk '{print $NF}'); do

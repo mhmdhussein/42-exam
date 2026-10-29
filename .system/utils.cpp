@@ -91,8 +91,11 @@ bool file_exists(std::string path)
 // ==> Reset folder to default
 bool exam::clean_all()
 {
-    if (file_exists("rendu") && level == 0)
-        system("rm -rf rendu");
+    // restoring a saved exam keeps rendu/ (and its git repo)
+    if (file_exists("rendu") && level == 0 && !backup)
+        // empty it rather than remove it: a shell with its cwd in rendu/ (from Windows)
+        // keeps the folder itself locked
+        system("find rendu -mindepth 1 -delete 2> /dev/null");
     if (file_exists("subjects"))
         system("rm -rf subjects");
     if (file_exists(".system/grading"))

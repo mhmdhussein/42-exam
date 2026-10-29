@@ -3,6 +3,7 @@
 # Runs pipelines through the reference and the student's picoshell (main.c
 # splits argv on "|") and compares the output. Runs from the repo root.
 source .system/trace.sh
+RENDU=${RENDU:-$PWD/rendu/picoshell} # the pushed snapshot in git submission mode
 TOTAL=$(grep -c '^\(FILTER=return \)\?check ' "$0")
 cd .system/grading || exit 1
 rm -f passed
@@ -14,7 +15,7 @@ fail_build() { trace_build "$1" "$2"; cleanup; exit 1; }
 gcc -w -c main.c -o main.o || fail_build "reference did not compile"
 gcc -Wall -Wextra -Werror -c picoshell.c -o ref.o && gcc -o ref ref.o main.o \
     || fail_build "reference did not compile"
-gcc -Wall -Wextra -Werror -c ../../rendu/picoshell/picoshell.c -o stud.o 2> .dev \
+gcc -Wall -Wextra -Werror -c "$RENDU/picoshell.c" -o stud.o 2> .dev \
     || fail_build "compile error" "$(cat .dev)"
 gcc -o stud stud.o main.o 2> .dev || fail_build "compile error" "$(cat .dev)"
 for sym in $(nm -u stud.o | awk '{print $NF}'); do

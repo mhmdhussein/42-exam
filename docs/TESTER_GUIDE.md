@@ -238,6 +238,12 @@ sections 1–4: same flags, same pass/fail rules, the same trace format, and `to
 by PID in an `EXIT` trap (never `killall`) and waits for output instead of sleeping a fixed time; the
 `mini_serv` tester does both, and opens its clients with bash's `/dev/tcp`, so it needs no `nc`.
 
+**Where the student's files are: `RENDU`.** Never hard-code `rendu/<name>/`. The runner and every
+custom tester read the student's folder from the `RENDU` environment variable, defaulting to
+`$ROOT/rendu/<name>` (set `RENDU=${RENDU:-$PWD/rendu/<name>}` right after sourcing `trace.sh`, before
+any `cd`). In git submission mode the examshell sets it to `.system/grading/rendu/<name>`, the
+snapshot of what was pushed; `check-subjects` leaves it unset. Traces still say `rendu/<name>/`.
+
 ## 7. Known-wrong solutions and definition of done
 
 ### Writing wrong solutions

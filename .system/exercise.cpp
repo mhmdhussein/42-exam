@@ -56,6 +56,8 @@ void exam::copy_ex_files(void)
     system("mkdir rendu 2> /dev/null");
     system("mkdir subjects 2> /dev/null");
     system("mkdir .system/grading 2> /dev/null");
+    if (setting_git && level == 0 && !backup && !file_exists("rendu/.git"))
+        git_init();
 
     // copy all the files in the current get_path() + attachment/* to the subjects directory
     std::string cmd_system_call = "cp -r " + get_path() + "/attachment/*" + " subjects/ 2> /dev/null";

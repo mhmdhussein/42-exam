@@ -1,0 +1,24 @@
+#!/bin/bash
+# Hook of .system/remote.git in git submission mode: refuses pushes the real
+# exam would choke on (big files, compiled binaries, object files).
+MAX_SIZE=1048576
+
+status=0
+while read -r old new ref; do
+    [ "$new" = 0000000000000000000000000000000000000000 ] && continue
+    while read -r mode type sha size path; do
+        [ "$type" = blob ] || continue
+        reason=""
+        case "${path##*/}" in
+            *.o | *.a | *.so | *.out | a.out | *.dSYM) reason="compiled file" ;;
+        esac
+        [ -z "$reason" ] && [ "$size" -gt "$MAX_SIZE" ] && reason="larger than 1 MB"
+        [ -z "$reason" ] && [ "$(git cat-file blob "$sha" | head -c 4 | od -An -c | tr -d ' ')" = '177ELF' ] \
+            && reason="compiled binary"
+        if [ -n "$reason" ]; then
+            echo "rejected: $path ($reason). Remove it from the commit and push again."
+            status=1
+        fi
+    done < <(git ls-tree -r -l "$new")
+done
+exit $status

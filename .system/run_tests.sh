@@ -10,7 +10,7 @@
 NAME=$1
 ROOT=$(pwd)
 GRADING=$ROOT/.system/grading
-RENDU=$ROOT/rendu/$NAME
+RENDU=${RENDU:-$ROOT/rendu/$NAME} # git submission mode points it at the pushed snapshot
 source "$ROOT/.system/trace.sh"
 
 cd "$GRADING" || exit 1

@@ -5,6 +5,7 @@
 /traceback
 /test
 /.system/grading/
+/.system/remote.git/
 /.system/exam_token/.settings
 /.system/exam_token/current_token.txt
 /.system/unique_id.txt

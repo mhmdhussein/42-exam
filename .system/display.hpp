@@ -47,6 +47,8 @@ struct ExamView
     std::vector<std::string> candidates; // exercises of the current level, for the roll
     time_t end_time;
     time_t cooldown_until; // next grademe allowed at, 0 when the cooldown is off
+    bool git;                // git submission mode: only what was pushed is graded
+    std::string push_status; // "everything pushed", "2 files not committed", ...; empty when git is off or strict
 };
 
 struct GradeResult
@@ -107,6 +109,8 @@ struct SettingsView
     DisplayStyle style;
     bool anim;
     bool pcd;
+    bool git;
+    bool git_strict;
 };
 
 struct RestoreView
@@ -186,7 +190,8 @@ enum class Msg
     SettingsSaved,
     PracticeTokenDeleted,
     PracticeNoExercises,
-    PracticeOnlyOne
+    PracticeOnlyOne,
+    GitMissing
 };
 
 class Display
@@ -203,7 +208,7 @@ public:
     virtual bool confirmRegistration(bool student, int exam_number) = 0;
 
     // exam start
-    virtual void showExplanation(void) = 0;
+    virtual void showExplanation(bool git) = 0;
     virtual void connexion(const std::string &username) = 0;
     virtual void showIntro(const std::string &username, bool student, int exam_number, int level, int time_max) = 0;
 
@@ -248,7 +253,7 @@ public:
     std::string restorePrompt(const RestoreView &r);
     bool confirmRegistration(bool student, int exam_number);
 
-    void showExplanation(void);
+    void showExplanation(bool git);
     void connexion(const std::string &username);
     void showIntro(const std::string &username, bool student, int exam_number, int level, int time_max);
 
@@ -303,7 +308,7 @@ public:
     std::string restorePrompt(const RestoreView &r);
     bool confirmRegistration(bool student, int exam_number);
 
-    void showExplanation(void);
+    void showExplanation(bool git);
     void connexion(const std::string &username);
     void showIntro(const std::string &username, bool student, int exam_number, int level, int time_max);
 
@@ -368,7 +373,7 @@ public:
     std::string restorePrompt(const RestoreView &r);
     bool confirmRegistration(bool student, int exam_number);
 
-    void showExplanation(void);
+    void showExplanation(bool git);
     void connexion(const std::string &username);
     void showIntro(const std::string &username, bool student, int exam_number, int level, int time_max);
 

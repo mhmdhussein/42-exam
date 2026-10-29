@@ -33,6 +33,7 @@ std::string current_path(void);
 exercise *randomize_exercise(std::map<int, exercise> list, bool remove_success);
 exam restore_data(void);
 bool file_exists(std::string path);
+bool git_installed(void);
 
 void reset_folder(void);
 
@@ -69,7 +70,7 @@ public:
     ExamView make_view(void);
     bool prepare_current_ex(void);
     void copy_ex_files(void);
-    int run_tester(void);
+    int run_tester(bool pushed = false); // pushed: grade what was pushed to .system/remote.git
     GradeResult last_result; // filled by run_tester
     void practice_mode(void);
     bool clean_all(void);
@@ -99,6 +100,9 @@ private:
     void load_settings(void);
     void save_settings(void);
     void set_display(void);
+    void git_init(void);
+    void git_snapshot(void);
+    std::string git_push_status(void);
     int piscine_menu(void);
     int stud_or_swim(void);
     bool practice_guard(void);
@@ -112,6 +116,8 @@ private:
     DisplayStyle setting_style;
     bool setting_anim;
     bool setting_pcd;
+    bool setting_git;
+    bool setting_git_strict; // hide the push status, as in the real exam
     std::string username;
 
     time_t start_time;
