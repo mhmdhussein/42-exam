@@ -176,6 +176,8 @@ static std::string msg_text(Msg m)
     case Msg::OnlyOneExercise:
     case Msg::PracticeOnlyOne:
         return (cross + "this level has only one exercise");
+    case Msg::GitMissing:
+        return (cross + "git is not installed: git submission is off");
     case Msg::NewExercise:
         return (paint(Color::Current, sym(Sym::Current)) + " new exercise drawn");
     case Msg::MaxLevel:
@@ -584,6 +586,11 @@ void DashboardDisplay::drawExamSide(const ui::Rect &head, const ui::Rect &levels
         int name_w = in_w - 4 - (right_text.empty() ? 0 : ui::display_width(right_text) + 1);
         level_lines.push_back(mark + " " + num + " " + ui::pad(name, std::max(name_w, 1)) + (right_text.empty() ? "" : " " + right_text));
     }
+    if (v.git)
+    {
+        level_lines.push_back("");
+        level_lines.push_back(dim("git ") + (v.push_status == "everything pushed" ? paint(Color::Success, v.push_status) : paint(Color::Warning, v.push_status)));
+    }
     ui::panel(screen_, levels, "levels", "", Color::Box);
     ui::text(screen_, {levels.x + 2, levels.y + 1, in_w, levels.h - 2}, level_lines);
 }
@@ -921,6 +928,7 @@ std::string DashboardDisplay::settingsMenu(const SettingsView &s)
     rows.push_back({"2", "Cheat commands", toggle(s.dcc), s.dcc ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     rows.push_back({"4", "Login animation", toggle(s.anim), s.anim ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     rows.push_back({"5", "Cooldown in Practice mode", toggle(s.pcd), s.pcd ? uni("●", "*") + " on" : uni("○", "o") + " off"});
+    rows.push_back({"6", "Git submission", toggle(s.git), s.git ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     std::string keys = key_hint(arrows(), "move") + "   " + key_hint(uni("←→", "left/right") + " space", "change") + "   " + key_hint("esc", "save");
     if (g.in_exam)
     {
@@ -997,17 +1005,25 @@ bool DashboardDisplay::confirmRegistration(bool student, int exam_number)
     return (listPick(o, cursor, "n") == "y");
 }
 
-void DashboardDisplay::showExplanation(void)
+void DashboardDisplay::showExplanation(bool git)
 {
     if (!enter())
-        return (ModernDisplay::showExplanation());
+        return (ModernDisplay::showExplanation(git));
     new_page("how it works", bold("How it works"), key_hint("enter", "continue"));
     std::string b = paint(Color::Current, sym(Sym::Current)) + " ";
     std::vector<std::string> &l = g.page.lines;
     l.push_back(b + "Work in another terminal: keep this one for the exam shell.");
     l.push_back(b + "Your subject is in " + bold("subjects/subject.en.txt") + ".");
-    l.push_back(b + "Put your files in " + bold("rendu/<exercise>/") + ". No git needed here,");
-    l.push_back("  but the real exam makes you push with git.");
+    if (git)
+    {
+        l.push_back(b + "Put your files in " + bold("rendu/<exercise>/") + ", a git repository:");
+        l.push_back("  git add, commit and push, then grade. Only what was pushed is graded.");
+    }
+    else
+    {
+        l.push_back(b + "Put your files in " + bold("rendu/<exercise>/") + ". No git needed here,");
+        l.push_back("  but the real exam makes you push with git.");
+    }
     l.push_back(b + "Press " + paint(Color::Current, "g") + " to be graded. Pass to reach the next level;");
     l.push_back("  fail and you retry the same exercise for fewer points.");
     l.push_back(b + "Each failed try makes you wait longer before the next grade.");

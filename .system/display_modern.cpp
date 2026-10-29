@@ -352,6 +352,7 @@ std::string ModernDisplay::settingsMenu(const SettingsView &s)
     rows.push_back({"2", "Cheat commands", toggle(s.dcc), s.dcc ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     rows.push_back({"4", "Login animation", toggle(s.anim), s.anim ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     rows.push_back({"5", "Cooldown in Practice mode", toggle(s.pcd), s.pcd ? uni("●", "*") + " on" : uni("○", "o") + " off"});
+    rows.push_back({"6", "Git submission", toggle(s.git), s.git ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     int count = rows.size();
     if (settings_cursor_ < 0 || settings_cursor_ >= count)
         settings_cursor_ = 0;
@@ -443,14 +444,22 @@ bool ModernDisplay::confirmRegistration(bool student, int exam_number)
     return (answer.empty() || answer == "y" || answer == "Y");
 }
 
-void ModernDisplay::showExplanation(void)
+void ModernDisplay::showExplanation(bool git)
 {
     std::vector<std::string> lines;
     lines.push_back("");
     lines.push_back(paint(Color::Current, sym(Sym::Current)) + " Work in another terminal: keep this one for the exam shell.");
     lines.push_back(paint(Color::Current, sym(Sym::Current)) + " Your subject is in " + bold("subjects/subject.en.txt") + ".");
-    lines.push_back(paint(Color::Current, sym(Sym::Current)) + " Put your files in " + bold("rendu/<exercise>/") + ". No git needed here,");
-    lines.push_back("  but the real exam makes you push with git.");
+    if (git)
+    {
+        lines.push_back(paint(Color::Current, sym(Sym::Current)) + " Put your files in " + bold("rendu/<exercise>/") + ", a git repository:");
+        lines.push_back("  git add, commit and push, then grademe. Only what was pushed is graded.");
+    }
+    else
+    {
+        lines.push_back(paint(Color::Current, sym(Sym::Current)) + " Put your files in " + bold("rendu/<exercise>/") + ". No git needed here,");
+        lines.push_back("  but the real exam makes you push with git.");
+    }
     lines.push_back(paint(Color::Current, sym(Sym::Current)) + " Type " + paint(Color::Success, "grademe") + " to be graded. Pass to reach the next level;");
     lines.push_back("  fail and you retry the same exercise for fewer points.");
     lines.push_back(paint(Color::Current, sym(Sym::Current)) + " Each failed try makes you wait longer before the next grade.");
@@ -572,9 +581,11 @@ void ModernDisplay::showStatus(const ExamView &v)
 
     std::cout << std::endl
               << "   " << dim("subject  ") << " subjects/subject.en.txt" << std::endl
-              << "   " << dim("your code") << " rendu/" << v.ex_name << "/" << std::endl
-              << std::endl
-              << "   " << dim("grademe to be graded " + dot() + " help for commands") << std::endl
+              << "   " << dim("your code") << " rendu/" << v.ex_name << "/" << std::endl;
+    if (v.git)
+        std::cout << "   " << dim("git      ") << " " << (v.push_status == "everything pushed" ? paint(Color::Success, v.push_status) : paint(Color::Warning, v.push_status)) << std::endl;
+    std::cout << std::endl
+              << "   " << dim(std::string(v.git ? "push, then " : "") + "grademe to be graded " + dot() + " help for commands") << std::endl
               << std::endl;
 }
 
@@ -862,6 +873,9 @@ void ModernDisplay::message(Msg m)
         break;
     case Msg::PracticeOnlyOne:
         std::cout << "  " << cross << " this level has only one exercise" << std::endl;
+        break;
+    case Msg::GitMissing:
+        std::cout << "  " << cross << " git is not installed: git submission is off" << std::endl;
         break;
     }
 }

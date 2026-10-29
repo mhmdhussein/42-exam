@@ -26,6 +26,8 @@ rm -f "$tmp"
 
 [ -x .system/a.out ] || fail "Binary not found, run 'make' first."
 
+command -v git >/dev/null 2>&1 || printf "$YELLOW$BOLD!$RESET git is not installed: the git submission setting stays off.\n"
+
 if [[ $PWD == /mnt/* ]]; then
     printf "$YELLOW$BOLD!$RESET Running from %s, on the Windows drive: grading is slow and timing\n" "$PWD"
     printf "  tests can fail. Clone the repo in your Linux home folder instead (see the README).\n"

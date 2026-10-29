@@ -159,6 +159,8 @@ std::string LegacyDisplay::settingsMenu(const SettingsView &s)
     print_toggle(s.anim);
     std::cout << LIME << "5." << WHITE << BOLD << " Cooldown in Practice mode";
     print_toggle(s.pcd);
+    std::cout << LIME << "6." << WHITE << BOLD << " Git submission";
+    print_toggle(s.git);
     if (!(std::cin >> input))
         sigd();
     // leaving: drop the rest of the line so the next getline doesn't read it
@@ -222,7 +224,7 @@ bool LegacyDisplay::confirmRegistration(bool student, int exam_number)
     return (confirm == "y" || confirm == "Y");
 }
 
-void LegacyDisplay::showExplanation(void)
+void LegacyDisplay::showExplanation(bool git)
 {
     std::string enter;
     system("clear");
@@ -242,8 +244,12 @@ void LegacyDisplay::showExplanation(void)
               << std::endl;
     std::cout << "     ⌛️ Warning: The more you try to get the same project corrected, \n     the longer you will have to wait to get it \x1B[32mcorrected\e[97m\e[1m.\n\n"
               << std::endl;
-    std::cout << "     📌 Nice reminder : Here you don't need to use GIT.\n         Remember that during the exam you will have to use it to push your project !\n\n"
-              << std::endl;
+    if (git)
+        std::cout << "     📌 Like in the real exam, \x1B[32mrendu\e[97m\e[1m is a git repository: git add, commit and push,\n         then grademe. Only what was pushed is graded !\n\n"
+                  << std::endl;
+    else
+        std::cout << "     📌 Nice reminder : Here you don't need to use GIT.\n         Remember that during the exam you will have to use it to push your project !\n\n"
+                  << std::endl;
 
     std::cout << RED << "     ‼️  DICLAIMER" << WHITE << std::endl;
     std::cout << "         This program is " << RED << "not" << WHITE << " the real 42 exam and is " << RED << "not" << WHITE << " made by 42." << std::endl;
@@ -387,8 +393,12 @@ void LegacyDisplay::showStatus(const ExamView &v)
     std::cout << "try: " << YELLOW << v.tries << RESET << std::endl << std::endl;
     std::cout << "Subject location:  " << LIME << current_path() << "/subjects/subject.en.txt" << RESET << std::endl;
     std::cout << "Exercise location: " << RED << current_path() << "/rendu/" << v.ex_name << "/" << RESET << std::endl;
-    std::cout << "Here you " << RED << BOLD << "don't need" << RESET <<" to use git." << std::endl
-              << std::endl;
+    if (v.git)
+        std::cout << "Git: " << LIME << v.push_status << RESET << " (git add, commit, push, then grademe)" << std::endl
+                  << std::endl;
+    else
+        std::cout << "Here you " << RED << BOLD << "don't need" << RESET <<" to use git." << std::endl
+                  << std::endl;
     std::cout << "End date: " << LIME << std::put_time(std::localtime(&v.end_time), "%d/%m/%Y %H:%M:%S") << RESET << std::endl;
     std::cout << "Left time: " << LIME << remaining_time(v.end_time) << RESET << std::endl;
     std::cout << std::endl
@@ -665,6 +675,9 @@ void LegacyDisplay::message(Msg m)
         break;
     case Msg::PracticeOnlyOne:
         std::cout << "There is only one exercise in this level." << std::endl;
+        break;
+    case Msg::GitMissing:
+        std::cout << RED << "git is not installed: git submission is off" << RESET << std::endl;
         break;
     }
 }

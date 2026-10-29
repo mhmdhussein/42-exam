@@ -139,9 +139,17 @@ void exam::load_settings(void)
             setting_style = (DisplayStyle)style;
         else
             setting_style = esd ? DisplayStyle::Exact : DisplayStyle::Modern;
+        // Line 7 is git submission; older files don't have it (off)
+        if (file >> v)
+            setting_git = v;
         file.close();
     }
     set_display();
+    if (setting_git && !git_installed())
+    {
+        setting_git = false;
+        display->message(Msg::GitMissing);
+    }
 }
 
 // ==> Pick the display matching the "Display style" setting
@@ -163,6 +171,7 @@ void exam::save_settings(void)
         file << setting_anim << std::endl;
         file << setting_pcd << std::endl;
         file << (int)setting_style << std::endl;
+        file << setting_git << std::endl;
         file.close();
     }
 }

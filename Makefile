@@ -10,7 +10,7 @@ CXXFLAGS += -DEXAMSHELL_VERSION='"$(or $(VERSION),dev)"'
 SRCS = .system/exercise.cpp .system/main.cpp .system/menu.cpp .system/exam.cpp \
        .system/utils.cpp .system/grade_request.cpp .system/data_persistence.cpp \
        .system/practice.cpp .system/display_legacy.cpp .system/display_examshell.cpp .system/display_modern.cpp \
-       .system/display_dashboard.cpp .system/term.cpp .system/ui.cpp .system/ui_screen.cpp
+       .system/display_dashboard.cpp .system/term.cpp .system/ui.cpp .system/ui_screen.cpp .system/git_submit.cpp
 OBJDIR = .system/obj
 OBJS = $(SRCS:.system/%.cpp=$(OBJDIR)/%.o)
 
@@ -40,7 +40,7 @@ check-subjects:
 	@bash .system/check_subjects.sh
 
 reset:
-	rm -rf rendu subjects success traces traceback .system/grading
+	rm -rf rendu subjects success traces traceback .system/grading .system/remote.git
 	rm -f .system/exam_token/current_token.txt
 
 help:

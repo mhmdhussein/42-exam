@@ -36,6 +36,7 @@ void exam::settings_menu(void)
         s.style = setting_style;
         s.anim = setting_anim;
         s.pcd = setting_pcd;
+        s.git = setting_git;
         input = display->settingsMenu(s);
         if (input == "1")
             setting_dse = !setting_dse;
@@ -49,11 +50,16 @@ void exam::settings_menu(void)
             setting_anim = !setting_anim;
         if (input == "5")
             setting_pcd = !setting_pcd;
+        if (input == "6")
+            setting_git = !setting_git;
     }
 
     display->message(Msg::SettingsSaved);
     save_settings();
     set_display();
+    // git submission turned on during an exam: set up the repos now
+    if (setting_git && current_ex && !file_exists("rendu/.git"))
+        git_init();
 }
 
 // ==> Menu for the student part

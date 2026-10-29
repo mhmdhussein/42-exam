@@ -114,7 +114,7 @@ void exam::ask_param(void)
     level_per_ex = ((double)level + 1) / (double)level_max * 100;
     level_per_ex_save = level_per_ex;
 
-    display->showExplanation();
+    display->showExplanation(setting_git);
     // =============================
 
     // CONNEXION ANIMATION
@@ -145,6 +145,7 @@ exam::exam(void) : current_ex(NULL), student(false), level_max(0), display(NULL)
     setting_style = DisplayStyle::Modern;
     setting_anim = true;
     setting_pcd = false;
+    setting_git = false;
     load_settings();
     changex = 0;
 }
@@ -192,6 +193,7 @@ void exam::reset_session(void)
     delete current_ex;
     current_ex = NULL;
     last_result = GradeResult();
+    system("rm -rf .system/remote.git");
 }
 
 void exam::up_lvl(void)

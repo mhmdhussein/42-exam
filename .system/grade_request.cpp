@@ -45,11 +45,13 @@ void exam::success_ex(bool force)
     backup = 0;
     if (!force)
     {
-        if (file_exists("rendu/"))
+        // in git mode, what was graded is the pushed snapshot
+        std::string graded = setting_git ? ".system/grading/rendu" : "rendu";
+        if (file_exists(graded + "/"))
         {
             if (!file_exists("success"))
                 system("mkdir success");
-            system("cp -r rendu/* success/ 2> /dev/null");
+            system(("cp -r " + graded + "/* success/ 2> /dev/null").c_str());
         }
     }
     if (level_per_ex > 100)
@@ -185,7 +187,7 @@ static void parse_trace(const std::string &path, GradeResult &r)
 // ==> Run the exercise's custom tester.sh, or the shared runner on its cases file:
 // 1 on pass, 0 on fail (trace moved to traces/), -1 if there is no tester.
 // Fills last_result; the caller shows it.
-int exam::run_tester(void)
+int exam::run_tester(bool pushed)
 {
     std::string cmd_system_call;
     if (file_exists(".system/grading/tester.sh"))
@@ -201,6 +203,12 @@ int exam::run_tester(void)
     remove(".system/grading/passed");
     remove(".system/grading/progress");
     remove(".system/grading/result");
+    if (pushed)
+    {
+        // grade the snapshot of what was pushed, not the working tree
+        git_snapshot();
+        cmd_system_call = "RENDU=\"$PWD/.system/grading/rendu/" + current_ex->get_name() + "\" " + cmd_system_call;
+    }
     display->testerStarted(current_ex->get_name());
     system(cmd_system_call.c_str());
     display->testerFinished();
@@ -240,7 +248,7 @@ void exam::grade_request(bool i)
     if (!i)
         display->gradingStarted();
 
-    int result = run_tester();
+    int result = run_tester(setting_git);
     if (result == -1)
         return;
     if (result)
