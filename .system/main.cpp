@@ -94,7 +94,7 @@ ExamView exam::make_view(void)
     v.end_time = end_time;
     v.cooldown_until = waiting_time ? current_ex->time_bef_grade : 0;
     v.git = setting_git;
-    if (setting_git)
+    if (setting_git && !setting_git_strict)
         v.push_status = git_push_status();
     return (v);
 }

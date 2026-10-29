@@ -37,6 +37,7 @@ void exam::settings_menu(void)
         s.anim = setting_anim;
         s.pcd = setting_pcd;
         s.git = setting_git;
+        s.git_strict = setting_git_strict;
         input = display->settingsMenu(s);
         if (input == "1")
             setting_dse = !setting_dse;
@@ -52,6 +53,8 @@ void exam::settings_menu(void)
             setting_pcd = !setting_pcd;
         if (input == "6")
             setting_git = !setting_git;
+        if (input == "7")
+            setting_git_strict = !setting_git_strict;
     }
 
     display->message(Msg::SettingsSaved);

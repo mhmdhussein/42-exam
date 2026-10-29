@@ -44,7 +44,8 @@ void ExamshellDisplay::showStatus(const ExamView &v)
     std::cout << "You must turn in your files in a subdirectory with the" << std::endl;
     std::cout << "same name as the assignment (" << RED << current_path() << "/rendu/" << v.ex_name << RESET << "/)." << std::endl;
     if (v.git)
-        std::cout << "Only what you push to the git repository is graded (" << LIME << v.push_status << RESET << ")." << std::endl
+        std::cout << "Only what you push to the git repository is graded"
+                  << (v.push_status.empty() ? std::string(".") : " (" + std::string(LIME) + v.push_status + RESET + ").") << std::endl
                   << std::endl;
     else
         std::cout << "Here you don't need to use git." << std::endl

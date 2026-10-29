@@ -48,7 +48,7 @@ struct ExamView
     time_t end_time;
     time_t cooldown_until; // next grademe allowed at, 0 when the cooldown is off
     bool git;                // git submission mode: only what was pushed is graded
-    std::string push_status; // "everything pushed", "2 files not committed", ...; empty when git is off
+    std::string push_status; // "everything pushed", "2 files not committed", ...; empty when git is off or strict
 };
 
 struct GradeResult
@@ -110,6 +110,7 @@ struct SettingsView
     bool anim;
     bool pcd;
     bool git;
+    bool git_strict;
 };
 
 struct RestoreView

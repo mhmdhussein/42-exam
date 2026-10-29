@@ -117,6 +117,7 @@ private:
     bool setting_anim;
     bool setting_pcd;
     bool setting_git;
+    bool setting_git_strict; // hide the push status, as in the real exam
     std::string username;
 
     time_t start_time;

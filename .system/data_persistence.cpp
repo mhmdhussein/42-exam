@@ -142,6 +142,9 @@ void exam::load_settings(void)
         // Line 7 is git submission; older files don't have it (off)
         if (file >> v)
             setting_git = v;
+        // Line 8: strict git (no push status)
+        if (file >> v)
+            setting_git_strict = v;
         file.close();
     }
     set_display();
@@ -172,6 +175,7 @@ void exam::save_settings(void)
         file << setting_pcd << std::endl;
         file << (int)setting_style << std::endl;
         file << setting_git << std::endl;
+        file << setting_git_strict << std::endl;
         file.close();
     }
 }

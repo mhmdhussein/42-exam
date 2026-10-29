@@ -161,6 +161,8 @@ std::string LegacyDisplay::settingsMenu(const SettingsView &s)
     print_toggle(s.pcd);
     std::cout << LIME << "6." << WHITE << BOLD << " Git submission";
     print_toggle(s.git);
+    std::cout << LIME << "7." << WHITE << BOLD << " Strict git (no push status)";
+    print_toggle(s.git_strict);
     if (!(std::cin >> input))
         sigd();
     // leaving: drop the rest of the line so the next getline doesn't read it
@@ -394,7 +396,8 @@ void LegacyDisplay::showStatus(const ExamView &v)
     std::cout << "Subject location:  " << LIME << current_path() << "/subjects/subject.en.txt" << RESET << std::endl;
     std::cout << "Exercise location: " << RED << current_path() << "/rendu/" << v.ex_name << "/" << RESET << std::endl;
     if (v.git)
-        std::cout << "Git: " << LIME << v.push_status << RESET << " (git add, commit, push, then grademe)" << std::endl
+        std::cout << "Git: " << (v.push_status.empty() ? std::string("") : std::string(LIME) + v.push_status + RESET + " ")
+                  << "(git add, commit, push, then grademe)" << std::endl
                   << std::endl;
     else
         std::cout << "Here you " << RED << BOLD << "don't need" << RESET <<" to use git." << std::endl

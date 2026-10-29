@@ -146,6 +146,7 @@ exam::exam(void) : current_ex(NULL), student(false), level_max(0), display(NULL)
     setting_anim = true;
     setting_pcd = false;
     setting_git = false;
+    setting_git_strict = false;
     load_settings();
     changex = 0;
 }

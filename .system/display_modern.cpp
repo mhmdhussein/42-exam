@@ -353,6 +353,7 @@ std::string ModernDisplay::settingsMenu(const SettingsView &s)
     rows.push_back({"4", "Login animation", toggle(s.anim), s.anim ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     rows.push_back({"5", "Cooldown in Practice mode", toggle(s.pcd), s.pcd ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     rows.push_back({"6", "Git submission", toggle(s.git), s.git ? uni("●", "*") + " on" : uni("○", "o") + " off"});
+    rows.push_back({"7", "Strict git (no push status)", toggle(s.git_strict), s.git_strict ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     int count = rows.size();
     if (settings_cursor_ < 0 || settings_cursor_ >= count)
         settings_cursor_ = 0;
@@ -582,7 +583,7 @@ void ModernDisplay::showStatus(const ExamView &v)
     std::cout << std::endl
               << "   " << dim("subject  ") << " subjects/subject.en.txt" << std::endl
               << "   " << dim("your code") << " rendu/" << v.ex_name << "/" << std::endl;
-    if (v.git)
+    if (!v.push_status.empty())
         std::cout << "   " << dim("git      ") << " " << (v.push_status == "everything pushed" ? paint(Color::Success, v.push_status) : paint(Color::Warning, v.push_status)) << std::endl;
     std::cout << std::endl
               << "   " << dim(std::string(v.git ? "push, then " : "") + "grademe to be graded " + dot() + " help for commands") << std::endl

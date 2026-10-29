@@ -586,7 +586,7 @@ void DashboardDisplay::drawExamSide(const ui::Rect &head, const ui::Rect &levels
         int name_w = in_w - 4 - (right_text.empty() ? 0 : ui::display_width(right_text) + 1);
         level_lines.push_back(mark + " " + num + " " + ui::pad(name, std::max(name_w, 1)) + (right_text.empty() ? "" : " " + right_text));
     }
-    if (v.git)
+    if (!v.push_status.empty())
     {
         level_lines.push_back("");
         level_lines.push_back(dim("git ") + (v.push_status == "everything pushed" ? paint(Color::Success, v.push_status) : paint(Color::Warning, v.push_status)));
@@ -929,6 +929,7 @@ std::string DashboardDisplay::settingsMenu(const SettingsView &s)
     rows.push_back({"4", "Login animation", toggle(s.anim), s.anim ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     rows.push_back({"5", "Cooldown in Practice mode", toggle(s.pcd), s.pcd ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     rows.push_back({"6", "Git submission", toggle(s.git), s.git ? uni("●", "*") + " on" : uni("○", "o") + " off"});
+    rows.push_back({"7", "Strict git (no push status)", toggle(s.git_strict), s.git_strict ? uni("●", "*") + " on" : uni("○", "o") + " off"});
     std::string keys = key_hint(arrows(), "move") + "   " + key_hint(uni("←→", "left/right") + " space", "change") + "   " + key_hint("esc", "save");
     if (g.in_exam)
     {
